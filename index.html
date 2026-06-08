@@ -285,7 +285,7 @@ footer .powered .brand{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;let
     </div>
   </div>
 
-  <!-- ====================== TAB 2: GROEPSSTANDEN ====================== -->
+  <!-- ====================== TAB 2: WEDSTRIJDEN & STANDEN ====================== -->
   <div class="panel" id="panel-standen">
     <div class="groups-grid" id="groupsGrid"></div>
   </div>
@@ -534,78 +534,78 @@ document.getElementById('subtitle').textContent =
 const WC_GROUPS = {"A": ["Mexico", "South Africa", "South Korea", "Czechia"], "B": ["Canada", "Bosnia-Herzegovina", "Qatar", "Switzerland"], "C": ["Brazil", "Morocco", "Haiti", "Scotland"], "D": ["United States", "Paraguay", "Australia", "Turkiye"], "E": ["Germany", "Curacao", "Ivory Coast", "Ecuador"], "F": ["Netherlands", "Japan", "Sweden", "Tunisia"], "G": ["Belgium", "Egypt", "Iran", "New Zealand"], "H": ["Spain", "Cape Verde", "Saudi Arabia", "Uruguay"], "I": ["France", "Senegal", "Iraq", "Norway"], "J": ["Argentina", "Algeria", "Austria", "Jordan"], "K": ["Portugal", "Congo DR", "Uzbekistan", "Colombia"], "L": ["England", "Croatia", "Ghana", "Panama"]};
 
 const WC_MATCHES = [
-  {id:1, group:"A", date:"2026-06-11", time:"21:00", home:"Mexico", away:"South Africa", hs:1, as_:0},
+  {id:1, group:"A", date:"2026-06-11", time:"21:00", home:"Mexico", away:"South Africa", hs:null, as_:null},
   {id:2, group:"A", date:"2026-06-12", time:"04:00", home:"South Korea", away:"Czechia", hs:null, as_:null},
-  {id:3, group:"B", date:"2026-06-12", time:"21:00", home:"Canada", away:"Bosnia-Herzegovina", hs:null, as_:null},
-  {id:4, group:"D", date:"2026-06-13", time:"03:00", home:"United States", away:"Paraguay", hs:null, as_:null},
-  {id:5, group:"B", date:"2026-06-13", time:"21:00", home:"Qatar", away:"Switzerland", hs:null, as_:null},
-  {id:6, group:"C", date:"2026-06-14", time:"00:00", home:"Brazil", away:"Morocco", hs:null, as_:null},
-  {id:7, group:"C", date:"2026-06-14", time:"03:00", home:"Haiti", away:"Scotland", hs:null, as_:null},
-  {id:8, group:"D", date:"2026-06-14", time:"06:00", home:"Australia", away:"Turkiye", hs:null, as_:null},
-  {id:9, group:"E", date:"2026-06-14", time:"19:00", home:"Germany", away:"Curacao", hs:null, as_:null},
-  {id:10, group:"F", date:"2026-06-14", time:"22:00", home:"Netherlands", away:"Japan", hs:null, as_:null},
-  {id:11, group:"E", date:"2026-06-14", time:"22:00", home:"Ivory Coast", away:"Ecuador", hs:null, as_:null},
-  {id:12, group:"F", date:"2026-06-15", time:"04:00", home:"Sweden", away:"Tunisia", hs:null, as_:null},
-  {id:13, group:"H", date:"2026-06-15", time:"18:00", home:"Spain", away:"Cape Verde", hs:null, as_:null},
-  {id:14, group:"G", date:"2026-06-15", time:"21:00", home:"Belgium", away:"Egypt", hs:null, as_:null},
-  {id:15, group:"H", date:"2026-06-16", time:"00:00", home:"Saudi Arabia", away:"Uruguay", hs:null, as_:null},
-  {id:16, group:"G", date:"2026-06-16", time:"03:00", home:"Iran", away:"New Zealand", hs:null, as_:null},
-  {id:17, group:"I", date:"2026-06-16", time:"21:00", home:"France", away:"Senegal", hs:null, as_:null},
-  {id:18, group:"I", date:"2026-06-17", time:"00:00", home:"Iraq", away:"Norway", hs:null, as_:null},
-  {id:19, group:"J", date:"2026-06-17", time:"03:00", home:"Argentina", away:"Algeria", hs:null, as_:null},
-  {id:20, group:"J", date:"2026-06-17", time:"06:00", home:"Austria", away:"Jordan", hs:null, as_:null},
-  {id:21, group:"K", date:"2026-06-17", time:"19:00", home:"Portugal", away:"Congo DR", hs:null, as_:null},
-  {id:22, group:"L", date:"2026-06-17", time:"22:00", home:"England", away:"Croatia", hs:null, as_:null},
-  {id:23, group:"L", date:"2026-06-18", time:"01:00", home:"Ghana", away:"Panama", hs:null, as_:null},
-  {id:24, group:"K", date:"2026-06-18", time:"04:00", home:"Uzbekistan", away:"Colombia", hs:null, as_:null},
-  {id:25, group:"A", date:"2026-06-18", time:"18:00", home:"Czechia", away:"South Africa", hs:null, as_:null},
-  {id:26, group:"B", date:"2026-06-18", time:"21:00", home:"Switzerland", away:"Bosnia-Herzegovina", hs:null, as_:null},
-  {id:27, group:"B", date:"2026-06-19", time:"00:00", home:"Canada", away:"Qatar", hs:null, as_:null},
-  {id:28, group:"A", date:"2026-06-19", time:"03:00", home:"Mexico", away:"South Korea", hs:null, as_:null},
-  {id:29, group:"D", date:"2026-06-19", time:"21:00", home:"United States", away:"Australia", hs:null, as_:null},
-  {id:30, group:"C", date:"2026-06-19", time:"21:00", home:"Scotland", away:"Morocco", hs:null, as_:null},
-  {id:31, group:"C", date:"2026-06-20", time:"00:00", home:"Brazil", away:"Haiti", hs:null, as_:null},
-  {id:32, group:"D", date:"2026-06-20", time:"03:00", home:"Turkiye", away:"Paraguay", hs:null, as_:null},
-  {id:33, group:"E", date:"2026-06-20", time:"19:00", home:"Ecuador", away:"Germany", hs:null, as_:null},
-  {id:34, group:"F", date:"2026-06-20", time:"22:00", home:"Tunisia", away:"Netherlands", hs:null, as_:null},
-  {id:35, group:"E", date:"2026-06-21", time:"01:00", home:"Curacao", away:"Ivory Coast", hs:null, as_:null},
-  {id:36, group:"F", date:"2026-06-21", time:"04:00", home:"Japan", away:"Sweden", hs:null, as_:null},
-  {id:37, group:"H", date:"2026-06-21", time:"18:00", home:"Spain", away:"Saudi Arabia", hs:null, as_:null},
-  {id:38, group:"G", date:"2026-06-21", time:"21:00", home:"New Zealand", away:"Belgium", hs:null, as_:null},
-  {id:39, group:"H", date:"2026-06-22", time:"00:00", home:"Uruguay", away:"Cape Verde", hs:null, as_:null},
-  {id:40, group:"G", date:"2026-06-22", time:"03:00", home:"Egypt", away:"Iran", hs:null, as_:null},
-  {id:41, group:"I", date:"2026-06-22", time:"21:00", home:"Norway", away:"Senegal", hs:null, as_:null},
-  {id:42, group:"J", date:"2026-06-23", time:"01:00", home:"Argentina", away:"Austria", hs:null, as_:null},
-  {id:43, group:"I", date:"2026-06-23", time:"00:00", home:"France", away:"Iraq", hs:null, as_:null},
-  {id:44, group:"J", date:"2026-06-23", time:"05:00", home:"Jordan", away:"Algeria", hs:null, as_:null},
-  {id:45, group:"K", date:"2026-06-23", time:"19:00", home:"Colombia", away:"Congo DR", hs:null, as_:null},
-  {id:46, group:"L", date:"2026-06-23", time:"22:00", home:"Croatia", away:"Ghana", hs:null, as_:null},
-  {id:47, group:"K", date:"2026-06-24", time:"01:00", home:"Portugal", away:"Uzbekistan", hs:null, as_:null},
-  {id:48, group:"L", date:"2026-06-24", time:"01:00", home:"England", away:"Panama", hs:null, as_:null},
-  {id:49, group:"A", date:"2026-06-25", time:"03:00", home:"Czechia", away:"Mexico", hs:null, as_:null},
-  {id:50, group:"A", date:"2026-06-25", time:"03:00", home:"South Africa", away:"South Korea", hs:null, as_:null},
-  {id:51, group:"B", date:"2026-06-24", time:"21:00", home:"Switzerland", away:"Canada", hs:null, as_:null},
-  {id:52, group:"B", date:"2026-06-24", time:"21:00", home:"Bosnia-Herzegovina", away:"Qatar", hs:null, as_:null},
-  {id:53, group:"C", date:"2026-06-25", time:"00:00", home:"Scotland", away:"Brazil", hs:null, as_:null},
-  {id:54, group:"C", date:"2026-06-25", time:"00:00", home:"Morocco", away:"Haiti", hs:null, as_:null},
-  {id:55, group:"D", date:"2026-06-25", time:"21:00", home:"Turkiye", away:"United States", hs:null, as_:null},
-  {id:56, group:"D", date:"2026-06-25", time:"21:00", home:"Paraguay", away:"Australia", hs:null, as_:null},
-  {id:57, group:"E", date:"2026-06-26", time:"01:00", home:"Ecuador", away:"Germany", hs:null, as_:null},
-  {id:58, group:"E", date:"2026-06-26", time:"01:00", home:"Curacao", away:"Ivory Coast", hs:null, as_:null},
-  {id:59, group:"F", date:"2026-06-25", time:"22:00", home:"Tunisia", away:"Netherlands", hs:null, as_:null},
-  {id:60, group:"F", date:"2026-06-25", time:"22:00", home:"Japan", away:"Sweden", hs:null, as_:null},
-  {id:61, group:"G", date:"2026-06-26", time:"21:00", home:"New Zealand", away:"Belgium", hs:null, as_:null},
-  {id:62, group:"G", date:"2026-06-26", time:"21:00", home:"Egypt", away:"Iran", hs:null, as_:null},
-  {id:63, group:"H", date:"2026-06-27", time:"01:00", home:"Uruguay", away:"Spain", hs:null, as_:null},
-  {id:64, group:"H", date:"2026-06-27", time:"01:00", home:"Cape Verde", away:"Saudi Arabia", hs:null, as_:null},
-  {id:65, group:"I", date:"2026-06-27", time:"03:00", home:"Norway", away:"France", hs:null, as_:null},
-  {id:66, group:"I", date:"2026-06-27", time:"03:00", home:"Senegal", away:"Iraq", hs:null, as_:null},
-  {id:67, group:"J", date:"2026-06-28", time:"04:00", home:"Jordan", away:"Argentina", hs:null, as_:null},
-  {id:68, group:"J", date:"2026-06-28", time:"04:00", home:"Algeria", away:"Austria", hs:null, as_:null},
-  {id:69, group:"K", date:"2026-06-27", time:"21:00", home:"Colombia", away:"Portugal", hs:null, as_:null},
-  {id:70, group:"K", date:"2026-06-27", time:"21:00", home:"Congo DR", away:"Uzbekistan", hs:null, as_:null},
+  {id:3, group:"A", date:"2026-06-18", time:"18:00", home:"Czechia", away:"South Africa", hs:null, as_:null},
+  {id:4, group:"A", date:"2026-06-19", time:"03:00", home:"Mexico", away:"South Korea", hs:null, as_:null},
+  {id:5, group:"A", date:"2026-06-25", time:"03:00", home:"Czechia", away:"Mexico", hs:null, as_:null},
+  {id:6, group:"A", date:"2026-06-25", time:"03:00", home:"South Africa", away:"South Korea", hs:null, as_:null},
+  {id:7, group:"B", date:"2026-06-12", time:"21:00", home:"Canada", away:"Bosnia-Herzegovina", hs:null, as_:null},
+  {id:8, group:"B", date:"2026-06-13", time:"21:00", home:"Qatar", away:"Switzerland", hs:null, as_:null},
+  {id:9, group:"B", date:"2026-06-18", time:"21:00", home:"Switzerland", away:"Bosnia-Herzegovina", hs:null, as_:null},
+  {id:10, group:"B", date:"2026-06-19", time:"00:00", home:"Canada", away:"Qatar", hs:null, as_:null},
+  {id:11, group:"B", date:"2026-06-24", time:"21:00", home:"Switzerland", away:"Canada", hs:null, as_:null},
+  {id:12, group:"B", date:"2026-06-24", time:"21:00", home:"Bosnia-Herzegovina", away:"Qatar", hs:null, as_:null},
+  {id:13, group:"D", date:"2026-06-13", time:"03:00", home:"United States", away:"Paraguay", hs:null, as_:null},
+  {id:14, group:"D", date:"2026-06-14", time:"06:00", home:"Australia", away:"Turkiye", hs:null, as_:null},
+  {id:15, group:"D", date:"2026-06-19", time:"21:00", home:"United States", away:"Australia", hs:null, as_:null},
+  {id:16, group:"D", date:"2026-06-20", time:"03:00", home:"Turkiye", away:"Paraguay", hs:null, as_:null},
+  {id:17, group:"D", date:"2026-06-25", time:"21:00", home:"Turkiye", away:"United States", hs:null, as_:null},
+  {id:18, group:"D", date:"2026-06-25", time:"21:00", home:"Paraguay", away:"Australia", hs:null, as_:null},
+  {id:19, group:"C", date:"2026-06-14", time:"00:00", home:"Brazil", away:"Morocco", hs:null, as_:null},
+  {id:20, group:"C", date:"2026-06-14", time:"03:00", home:"Haiti", away:"Scotland", hs:null, as_:null},
+  {id:21, group:"C", date:"2026-06-19", time:"21:00", home:"Scotland", away:"Morocco", hs:null, as_:null},
+  {id:22, group:"C", date:"2026-06-20", time:"00:00", home:"Brazil", away:"Haiti", hs:null, as_:null},
+  {id:23, group:"C", date:"2026-06-25", time:"00:00", home:"Scotland", away:"Brazil", hs:null, as_:null},
+  {id:24, group:"C", date:"2026-06-25", time:"00:00", home:"Morocco", away:"Haiti", hs:null, as_:null},
+  {id:25, group:"E", date:"2026-06-14", time:"19:00", home:"Germany", away:"Curacao", hs:null, as_:null},
+  {id:26, group:"E", date:"2026-06-14", time:"22:00", home:"Ivory Coast", away:"Ecuador", hs:null, as_:null},
+  {id:27, group:"E", date:"2026-06-20", time:"22:00", home:"Germany", away:"Ivory Coast", hs:null, as_:null},
+  {id:28, group:"E", date:"2026-06-21", time:"02:00", home:"Ecuador", away:"Curacao", hs:null, as_:null},
+  {id:29, group:"E", date:"2026-06-25", time:"22:00", home:"Curacao", away:"Ivory Coast", hs:null, as_:null},
+  {id:30, group:"E", date:"2026-06-25", time:"22:00", home:"Ecuador", away:"Germany", hs:null, as_:null},
+  {id:31, group:"F", date:"2026-06-14", time:"22:00", home:"Netherlands", away:"Japan", hs:null, as_:null},
+  {id:32, group:"F", date:"2026-06-15", time:"04:00", home:"Sweden", away:"Tunisia", hs:null, as_:null},
+  {id:33, group:"F", date:"2026-06-20", time:"19:00", home:"Netherlands", away:"Sweden", hs:null, as_:null},
+  {id:34, group:"F", date:"2026-06-21", time:"05:00", home:"Tunisia", away:"Japan", hs:null, as_:null},
+  {id:35, group:"F", date:"2026-06-26", time:"01:00", home:"Japan", away:"Sweden", hs:null, as_:null},
+  {id:36, group:"F", date:"2026-06-26", time:"01:00", home:"Tunisia", away:"Netherlands", hs:null, as_:null},
+  {id:37, group:"H", date:"2026-06-15", time:"18:00", home:"Spain", away:"Cape Verde", hs:null, as_:null},
+  {id:38, group:"H", date:"2026-06-16", time:"00:00", home:"Saudi Arabia", away:"Uruguay", hs:null, as_:null},
+  {id:39, group:"H", date:"2026-06-21", time:"18:00", home:"Spain", away:"Saudi Arabia", hs:null, as_:null},
+  {id:40, group:"H", date:"2026-06-22", time:"00:00", home:"Uruguay", away:"Cape Verde", hs:null, as_:null},
+  {id:41, group:"H", date:"2026-06-27", time:"01:00", home:"Uruguay", away:"Spain", hs:null, as_:null},
+  {id:42, group:"H", date:"2026-06-27", time:"01:00", home:"Cape Verde", away:"Saudi Arabia", hs:null, as_:null},
+  {id:43, group:"G", date:"2026-06-15", time:"21:00", home:"Belgium", away:"Egypt", hs:null, as_:null},
+  {id:44, group:"G", date:"2026-06-16", time:"03:00", home:"Iran", away:"New Zealand", hs:null, as_:null},
+  {id:45, group:"G", date:"2026-06-21", time:"21:00", home:"Belgium", away:"Iran", hs:null, as_:null},
+  {id:46, group:"G", date:"2026-06-22", time:"03:00", home:"New Zealand", away:"Egypt", hs:null, as_:null},
+  {id:47, group:"G", date:"2026-06-27", time:"05:00", home:"Egypt", away:"Iran", hs:null, as_:null},
+  {id:48, group:"G", date:"2026-06-27", time:"05:00", home:"New Zealand", away:"Belgium", hs:null, as_:null},
+  {id:49, group:"I", date:"2026-06-16", time:"21:00", home:"France", away:"Senegal", hs:null, as_:null},
+  {id:50, group:"I", date:"2026-06-17", time:"00:00", home:"Iraq", away:"Norway", hs:null, as_:null},
+  {id:51, group:"I", date:"2026-06-22", time:"21:00", home:"Norway", away:"Senegal", hs:null, as_:null},
+  {id:52, group:"I", date:"2026-06-23", time:"00:00", home:"France", away:"Iraq", hs:null, as_:null},
+  {id:53, group:"I", date:"2026-06-27", time:"03:00", home:"Norway", away:"France", hs:null, as_:null},
+  {id:54, group:"I", date:"2026-06-27", time:"03:00", home:"Senegal", away:"Iraq", hs:null, as_:null},
+  {id:55, group:"J", date:"2026-06-17", time:"03:00", home:"Argentina", away:"Algeria", hs:null, as_:null},
+  {id:56, group:"J", date:"2026-06-17", time:"06:00", home:"Austria", away:"Jordan", hs:null, as_:null},
+  {id:57, group:"J", date:"2026-06-23", time:"01:00", home:"Argentina", away:"Austria", hs:null, as_:null},
+  {id:58, group:"J", date:"2026-06-23", time:"05:00", home:"Jordan", away:"Algeria", hs:null, as_:null},
+  {id:59, group:"J", date:"2026-06-28", time:"04:00", home:"Jordan", away:"Argentina", hs:null, as_:null},
+  {id:60, group:"J", date:"2026-06-28", time:"04:00", home:"Algeria", away:"Austria", hs:null, as_:null},
+  {id:61, group:"K", date:"2026-06-17", time:"19:00", home:"Portugal", away:"Congo DR", hs:null, as_:null},
+  {id:62, group:"K", date:"2026-06-18", time:"04:00", home:"Uzbekistan", away:"Colombia", hs:null, as_:null},
+  {id:63, group:"K", date:"2026-06-23", time:"19:00", home:"Colombia", away:"Congo DR", hs:null, as_:null},
+  {id:64, group:"K", date:"2026-06-24", time:"01:00", home:"Portugal", away:"Uzbekistan", hs:null, as_:null},
+  {id:65, group:"K", date:"2026-06-27", time:"21:00", home:"Colombia", away:"Portugal", hs:null, as_:null},
+  {id:66, group:"K", date:"2026-06-27", time:"21:00", home:"Congo DR", away:"Uzbekistan", hs:null, as_:null},
+  {id:67, group:"L", date:"2026-06-17", time:"22:00", home:"England", away:"Croatia", hs:null, as_:null},
+  {id:68, group:"L", date:"2026-06-18", time:"01:00", home:"Ghana", away:"Panama", hs:null, as_:null},
+  {id:69, group:"L", date:"2026-06-23", time:"22:00", home:"England", away:"Ghana", hs:null, as_:null},
+  {id:70, group:"L", date:"2026-06-24", time:"01:00", home:"Panama", away:"Croatia", hs:null, as_:null},
   {id:71, group:"L", date:"2026-06-27", time:"23:00", home:"Panama", away:"England", hs:null, as_:null},
-  {id:72, group:"L", date:"2026-06-27", time:"23:00", home:"Ghana", away:"Croatia", hs:null, as_:null},
+  {id:72, group:"L", date:"2026-06-27", time:"23:00", home:"Croatia", away:"Ghana", hs:null, as_:null},
 ];
 
 
@@ -733,34 +733,52 @@ const NAME_MAP = {
 };
 function mapName(n){ if(!n) return n; const t=n.trim(); return NAME_MAP[t] || t; }
 
-/* Zet een openfootball-match om naar ons formaat en koppel aan WC_MATCHES
-   op basis van groep + beide landen (volgorde-onafhankelijk). */
+/* Zet openfootball-data om: groepsfase koppelen aan WC_MATCHES, en
+   knockout-matchen verzamelen in WC_KO (enkel met echte landnamen). */
 function applyLiveData(json){
   if(!json || !Array.isArray(json.matches)) return false;
-  let updated=0;
+  WC_KO = [];
+  // ronde-namen van openfootball naar onze labels
+  const KO_ROUNDS={
+    "Round of 32":"Round of 32","Round of 16":"Round of 16",
+    "Quarter-finals":"Quarter-finals","Quarterfinals":"Quarter-finals","Quarter finals":"Quarter-finals",
+    "Semi-finals":"Semi-finals","Semifinals":"Semi-finals","Semi finals":"Semi-finals",
+    "Final":"Final"
+  };
+  // placeholders zoals "2A","1E","3A/B/C/D/F","W73" zijn GEEN echte landen
+  const isPlaceholder=(s)=> !s || /^[0-9]/.test(s.trim()) || /^[WL]\d/.test(s.trim()) || s.includes("/");
+
   json.matches.forEach(fm=>{
-    if(!fm.group) return;                      // enkel groepsfase
-    const grp=(fm.group||"").replace("Group ","").trim();
     const t1=mapName(fm.team1), t2=mapName(fm.team2);
-    // zoek bijhorende lokale match (zelfde groep, zelfde 2 landen)
-    const local=WC_MATCHES.find(m=>m.group===grp &&
-      ((m.home===t1 && m.away===t2) || (m.home===t2 && m.away===t1)));
-    if(!local) return;
-    // scores ophalen indien aanwezig
-    const sc = fm.score && (fm.score.ft || fm.score.FT);
-    if(Array.isArray(sc) && sc.length===2 && sc[0]!==null && sc[1]!==null){
-      // orienteer scores naar de lokale thuis/uit-volgorde
-      if(local.home===t1){ local.hs=sc[0]; local.as_=sc[1]; }
-      else { local.hs=sc[1]; local.as_=sc[0]; }
-      updated++;
+    if(fm.group){
+      // ---- groepsfase ----
+      const grp=(fm.group||"").replace("Group ","").trim();
+      const local=WC_MATCHES.find(m=>m.group===grp &&
+        ((m.home===t1 && m.away===t2) || (m.home===t2 && m.away===t1)));
+      if(!local) return;
+      const sc = fm.score && (fm.score.ft || fm.score.FT);
+      if(Array.isArray(sc) && sc.length===2 && sc[0]!==null && sc[1]!==null){
+        if(local.home===t1){ local.hs=sc[0]; local.as_=sc[1]; }
+        else { local.hs=sc[1]; local.as_=sc[0]; }
+      }
+    } else if(fm.round && KO_ROUNDS[fm.round.trim()]){
+      // ---- knockout ---- enkel opnemen als beide teams echte landen zijn
+      if(isPlaceholder(fm.team1) || isPlaceholder(fm.team2)) return;
+      const sc = fm.score && (fm.score.ft || fm.score.FT);
+      WC_KO.push({
+        round: KO_ROUNDS[fm.round.trim()],
+        home: t1, away: t2,
+        hs: Array.isArray(sc)? sc[0] : null,
+        as_: Array.isArray(sc)? sc[1] : null
+      });
     }
   });
-  return updated>0 || true;   // true = bron geladen (ook als 0-0/geen scores)
+  return true;
 }
 
 async function loadLiveData(){
   const note=document.getElementById('liveSource');
-  if(MANUAL_OVERRIDE){ if(note) note.textContent="Bron: handmatig ingevuld"; return; }
+  if(MANUAL_OVERRIDE){ if(note) note.textContent="Bron: handmatig ingevuld"; renderLive(); renderGroups(); renderKlassement(); return; }
   try{
     const res=await fetch(LIVE_URL, {cache:"no-store"});
     if(!res.ok) throw new Error("HTTP "+res.status);
@@ -771,15 +789,254 @@ async function loadLiveData(){
     if(note) note.textContent="Bron: handmatig (automatische data niet bereikbaar)";
   }
   // herteken alles met (mogelijk) bijgewerkte data
-  renderLive(); renderGroups();
+  renderLive(); renderGroups(); renderKlassement();
 }
 
 
-initTabs();
-renderLive();
-renderGroups();
-render();
-loadLiveData();
+/* ================================================================
+   PUNTENMOTOR — berekent het klassement automatisch uit de scores.
+   ----------------------------------------------------------------
+   Bron van de scores: WC_MATCHES (groepsfase) + WC_KO (knockout),
+   beide automatisch gevuld via openfootball (zie loadLiveData),
+   met handmatige terugval.
+   ----------------------------------------------------------------
+   Regels (puntencompetitie):
+     Groepsfase: win 3, gelijk 1, verlies 0
+                 groepswinnaar (1e, groep afgewerkt) +3
+                 door naar laatste 32 (top 2, of beste-3e) +2
+     Knockout:   laatste 16 +3, kwartfinale +5, halve finale +8,
+                 finale +12, wereldkampioen +15
+     Eindscore = ruwe punten x pot-coefficient (1 / 1,5 / 2 / 2,5)
+   ================================================================ */
+
+const POT = {
+  "Mexico":1,"Canada":1,"United States":1,"Spain":1,"Argentina":1,"France":1,
+  "England":1,"Brazil":1,"Portugal":1,"Netherlands":1,"Belgium":1,"Germany":1,
+  "Croatia":2,"Morocco":2,"Colombia":2,"Uruguay":2,"Switzerland":2,"Japan":2,
+  "Senegal":2,"Iran":2,"South Korea":2,"Ecuador":2,"Austria":2,"Australia":2,
+  "Norway":3,"Panama":3,"Egypt":3,"Algeria":3,"Scotland":3,"Paraguay":3,
+  "Tunisia":3,"Ivory Coast":3,"Uzbekistan":3,"Qatar":3,"Saudi Arabia":3,"South Africa":3,
+  "Jordan":4,"Cape Verde":4,"Curacao":4,"Haiti":4,"New Zealand":4,
+  "Sweden":4,"Turkiye":4,"Bosnia-Herzegovina":4,"Czechia":4,"Ghana":4,
+  "Iraq":4,"Congo DR":4
+};
+const COEF = {1:1.0, 2:1.5, 3:2.0, 4:2.5};
+
+/* knockout-matchen (worden door loadLiveData gevuld vanuit openfootball).
+   Elk item: {round:"Round of 32"|"Round of 16"|"Quarter-finals"|"Semi-finals"|"Final",
+              home, away, hs, as_}  (echte landnamen zodra gespeeld) */
+let WC_KO = [];
+
+/* Bereken per land de ruwe punten + eindscore. Geeft een object {land: {raw, coef, score, pot}} */
+function computeCountryPoints(){
+  const res={};
+  Object.keys(POT).forEach(t=>res[t]={raw:0,pot:POT[t],coef:COEF[POT[t]],score:0});
+
+  // ---- Groepsfase ----
+  for(const g of Object.keys(WC_GROUPS)){
+    const teams=WC_GROUPS[g];
+    const st={}; teams.forEach(t=>st[t]={team:t,P:0,W:0,D:0,L:0,GF:0,GA:0,Pts:0});
+    WC_MATCHES.filter(m=>m.group===g && m.hs!==null && m.as_!==null).forEach(m=>{
+      const h=st[m.home], a=st[m.away]; if(!h||!a) return;
+      h.P++;a.P++; h.GF+=m.hs;h.GA+=m.as_; a.GF+=m.as_;a.GA+=m.hs;
+      if(m.hs>m.as_){h.W++;h.Pts+=3;a.L++;}
+      else if(m.hs<m.as_){a.W++;a.Pts+=3;h.L++;}
+      else {h.D++;a.D++;h.Pts++;a.Pts++;}
+    });
+    // groepspunten toekennen
+    teams.forEach(t=>{ if(res[t]) res[t].raw += st[t].Pts; });
+    // ranking binnen groep
+    const ranked=teams.map(t=>st[t]).sort((x,y)=>
+      y.Pts-x.Pts || (y.GF-y.GA)-(x.GF-x.GA) || y.GF-x.GF || teams.indexOf(x.team)-teams.indexOf(y.team));
+    const complete = ranked.every(r=>r.P>=3);  // groep volledig gespeeld?
+    // groepswinnaar +3 (enkel als groep af is)
+    if(complete && res[ranked[0].team]) res[ranked[0].team].raw += 3;
+    // door naar laatste 32 (+2): top 2 als groep af is; beste-3e bepalen we via KO-deelname
+    if(complete){
+      [ranked[0],ranked[1]].forEach(r=>{ if(res[r.team]) res[r.team].raw += 2; });
+    }
+  }
+
+  // ---- "door naar laatste 32" voor beste nummers 3 ----
+  // Een 3e-plaats die doorgaat, herkennen we doordat het land voorkomt in de Round of 32.
+  const r32teams=new Set();
+  WC_KO.filter(m=>m.round==="Round of 32").forEach(m=>{
+    if(m.home) r32teams.add(m.home); if(m.away) r32teams.add(m.away);
+  });
+  // wie al +2 kreeg via top-2 weten we niet expliciet; daarom: ken +2 toe aan elk
+  // R32-deelnemend land dat NOG geen +2 had. We benaderen dit door te kijken of het
+  // land 3e werd in zijn groep.
+  for(const g of Object.keys(WC_GROUPS)){
+    const teams=WC_GROUPS[g];
+    const st={}; teams.forEach(t=>st[t]={team:t,P:0,GF:0,GA:0,Pts:0});
+    WC_MATCHES.filter(m=>m.group===g && m.hs!==null && m.as_!==null).forEach(m=>{
+      const h=st[m.home],a=st[m.away]; if(!h||!a)return;
+      h.P++;a.P++;h.GF+=m.hs;h.GA+=m.as_;a.GF+=m.as_;a.GA+=m.hs;
+      if(m.hs>m.as_)h.Pts+=3; else if(m.hs<m.as_)a.Pts+=3; else {h.Pts++;a.Pts++;}
+    });
+    const ranked=teams.map(t=>st[t]).sort((x,y)=>
+      y.Pts-x.Pts || (y.GF-y.GA)-(x.GF-x.GA) || y.GF-x.GF || teams.indexOf(x.team)-teams.indexOf(y.team));
+    const third=ranked[2];
+    if(third && r32teams.has(third.team) && res[third.team]) res[third.team].raw += 2;
+  }
+
+  // ---- Knockout-progressie ----
+  // Een land dat voorkomt in een ronde, heeft die ronde "bereikt".
+  const reached={"Round of 16":3,"Quarter-finals":5,"Semi-finals":8,"Final":12};
+  Object.keys(reached).forEach(rd=>{
+    const pts=reached[rd];
+    WC_KO.filter(m=>m.round===rd).forEach(m=>{
+      [m.home,m.away].forEach(t=>{ if(t&&res[t]) res[t].raw += pts; });
+    });
+  });
+  // wereldkampioen +15 = winnaar van de finale
+  WC_KO.filter(m=>m.round==="Final" && m.hs!==null && m.as_!==null).forEach(m=>{
+    const champ = m.hs>m.as_ ? m.home : (m.as_>m.hs ? m.away : null);
+    if(champ && res[champ]) res[champ].raw += 15;
+  });
+
+  // ---- eindscore = raw x coef ----
+  Object.keys(res).forEach(t=>{ res[t].score = res[t].raw * res[t].coef; });
+  return res;
+}
+
+
+/* ================================================================
+   DEELNEMERS — geladen uit een apart CSV-bestand op GitHub.
+   ----------------------------------------------------------------
+   Verwacht een bestand 'deelnemers.csv' naast index.html, met kolommen:
+       deelnemer,land
+   (eerste regel = kop). Bv:
+       deelnemer,land
+       Tjorven,Belgium
+       Dario,Argentina
+   Een deelnemer toevoegen/wijzigen? Pas enkel deelnemers.csv aan op GitHub.
+   ================================================================ */
+
+const DEELNEMERS_URL = "deelnemers.csv";   // relatief naast index.html
+let PARTICIPANTS = [];                       // [{name, country}]
+
+/* Land-naam normaliseren naar onze POT-sleutels (vangt schrijfwijzen op). */
+function normCountry(c){
+  if(!c) return c;
+  const t=c.trim();
+  const map={
+    "New zealand":"New Zealand","USA":"United States","Curaçao":"Curacao",
+    "Czech Republic":"Czechia","Türkiye":"Turkiye","Cabo Verde":"Cape Verde",
+    "Côte d'Ivoire":"Ivory Coast","DR Congo":"Congo DR","Korea Republic":"South Korea"
+  };
+  if(map[t]) return map[t];
+  // case-insensitieve match tegen POT-sleutels
+  for(const k in POT){ if(k.toLowerCase()===t.toLowerCase()) return k; }
+  return t;
+}
+
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/);
+  const out=[];
+  // sla kop over als die 'deelnemer' bevat
+  let start=0;
+  if(lines[0] && /deelnemer/i.test(lines[0])) start=1;
+  for(let i=start;i<lines.length;i++){
+    const line=lines[i]; if(!line.trim()) continue;
+    const cells=line.split(/[;,]\s*|\t/);
+    const name=(cells[0]||"").trim();
+    const country=normCountry((cells[1]||"").trim());
+    if(name) out.push({name,country});
+  }
+  return out;
+}
+
+async function loadParticipants(){
+  try{
+    const res=await fetch(DEELNEMERS_URL,{cache:"no-store"});
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    PARTICIPANTS=parseCSV(await res.text());
+  }catch(e){
+    PARTICIPANTS=[];   // geen CSV -> lege lijst, klassement toont melding
+  }
+}
+
+function prizeLabel(pos){
+  return {1:"1e - 35%",2:"2e - 25%",3:"3e - 15%",4:"4e - 10%"}[pos] || "";
+}
+
+/* Bouw het deelnemersklassement uit PARTICIPANTS + computeCountryPoints(). */
+function buildKlassement(){
+  const cp=computeCountryPoints();
+  const rows=PARTICIPANTS.map(p=>{
+    const c=cp[p.country];
+    return {
+      name:p.name, country:p.country,
+      pot: c? c.pot : (POT[p.country]||""),
+      score: c? c.score : 0
+    };
+  });
+  // sorteer: hoogste eindscore eerst; bij gelijke stand alfabetisch op naam
+  rows.sort((a,b)=> b.score-a.score || a.name.localeCompare(b.name,'nl'));
+  return rows;
+}
+
+/* fmt score zonder onnodige decimalen */
+function fmtScore(s){
+  if(typeof s!=="number") return s;
+  return Number.isInteger(s)? String(s) : String(Math.round(s*100)/100).replace('.',',');
+}
+
+function renderKlassement(){
+  const rows=buildKlassement();
+  const podium=document.getElementById('podium');
+  const box=document.getElementById('rows');
+
+  if(!rows.length){
+    if(podium) podium.innerHTML='';
+    box.innerHTML='<div class="empty">Geen deelnemers geladen. Controleer deelnemers.csv op GitHub.</div>';
+    return;
+  }
+
+  // Podium top 3
+  const order=[1,0,2];
+  podium.innerHTML = order.map(i=>{
+    const r=rows[i]; if(!r) return '<div></div>';
+    const cls=['p2','p1','p3'][order.indexOf(i)];
+    const medal=['🥈','🥇','🥉'][order.indexOf(i)];
+    const flag=flagImg(r.country);
+    return `<div class="pod ${cls}">
+      <span class="medal">${medal}</span>
+      <div class="rank-num">${i+1}</div>
+      <div class="who">${esc(r.name)}</div>
+      <div class="land">${flag}<span>${esc(r.country)}</span></div>
+      <div class="pts">${fmtScore(r.score)}</div>
+      <div class="prize">${['25%','35%','15%'][order.indexOf(i)]}</div>
+    </div>`;
+  }).join('');
+
+  // Volledige tabel
+  box.innerHTML = rows.map((r,idx)=>{
+    const pos=idx+1;
+    const topCls = pos<=4 ? `top${pos}` : '';
+    const flag=flagImg(r.country);
+    const tag = pos<=4 ? `<span class="prize-tag t${pos}">${prizeLabel(pos).split(' - ')[1]}</span>` : '';
+    return `<div class="row ${topCls}" style="animation-delay:${Math.min(idx,30)*0.03}s">
+      <div class="pos">${pos}</div>
+      <div class="name">${esc(r.name)}${tag}</div>
+      <div class="country">${flag}<span>${esc(r.country)}</span></div>
+      <div class="pot pot${r.pot||''}">${r.pot||''}</div>
+      <div class="score">${fmtScore(r.score)}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- opstart ---- */
+async function init(){
+  initTabs();
+  await loadParticipants();   // deelnemers uit CSV
+  renderLive();
+  renderGroups();
+  renderKlassement();         // toont meteen (groeps)stand op basis van WC_MATCHES
+  await loadLiveData();       // haalt live scores + knockout op, hertekent
+}
+init();
 </script>
 </body>
 </html>
