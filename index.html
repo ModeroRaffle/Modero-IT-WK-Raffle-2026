@@ -874,7 +874,7 @@ async function loadLiveData(){
   // 2) Terugval: openfootball
   if(!loaded){
     try{
-      const res=await fetch(LIVE_URL, {cache:"no-store"});
+      const res = await fetch(LIVE_URL, {cache:"default"});
       if(!res.ok) throw new Error("HTTP "+res.status);
       const json=await res.json();
       applyLiveData(json);
