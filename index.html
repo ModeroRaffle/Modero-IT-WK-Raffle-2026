@@ -719,10 +719,10 @@ function normalizeWC26(raw){
 
   const matches = list.map(g=>{
     // teamnamen
-    const t1 = teamName(pick(g,["home_team","homeTeam","team1","home","teamA","team_home","home_team_name"]))
-            || teamName(g.home) ;
-    const t2 = teamName(pick(g,["away_team","awayTeam","team2","away","teamB","team_away","away_team_name"]))
-            || teamName(g.away);
+    const t1 = mapName(teamName(pick(g,["home_team","homeTeam","team1","home","teamA","team_home","home_team_name"]))
+            || teamName(g.home));
+    const t2 = mapName(teamName(pick(g,["away_team","awayTeam","team2","away","teamB","team_away","away_team_name"]))
+            || teamName(g.away));
     // scores (kunnen los of in een score-object zitten)
     let hs = toNum(pick(g,["home_score","homeScore","score1","home_goals","homeGoals","goals_home","fthg"]));
     let as_= toNum(pick(g,["away_score","awayScore","score2","away_goals","awayGoals","goals_away","ftag"]));
