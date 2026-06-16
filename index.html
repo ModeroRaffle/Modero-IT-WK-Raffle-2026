@@ -753,21 +753,27 @@ function normalizeWC26(raw){
   return {name:"World Cup 2026 (worldcup26.ir)", matches};
 }
 function normalizeFootballDataMatch(fm) {
-  const home = mapName(fm.homeTeam && fm.homeTeam.name);
-  const away = mapName(fm.awayTeam && fm.awayTeam.name);
+  // Accept both shapes:
+  //  - football-data.org: {homeTeam:{name}, awayTeam:{name}, score:{fullTime:{home,away}}, stage, group}
+  //  - normalizeWC26:      {team1, team2, score:{ft:[h,a]}, group:"Group H", round}
+  const home = mapName((fm.homeTeam && fm.homeTeam.name) || fm.team1);
+  const away = mapName((fm.awayTeam && fm.awayTeam.name) || fm.team2);
 
   const score = fm.score || {};
   const fullTime = score.fullTime || {};
   const halfTime = score.halfTime || {};
+  const ft = Array.isArray(score.ft) ? score.ft : null;
 
   const homeScore =
     typeof fullTime.home === "number" ? fullTime.home :
     typeof halfTime.home === "number" ? halfTime.home :
+    (ft && typeof ft[0] === "number") ? ft[0] :
     null;
 
   const awayScore =
     typeof fullTime.away === "number" ? fullTime.away :
     typeof halfTime.away === "number" ? halfTime.away :
+    (ft && typeof ft[1] === "number") ? ft[1] :
     null;
 
   return {
@@ -775,6 +781,7 @@ function normalizeFootballDataMatch(fm) {
     status: fm.status,
     stage: fm.stage,
     group: fm.group,
+    round: fm.round,
     home,
     away,
     hs: homeScore,
@@ -835,7 +842,7 @@ function applyLiveData(json) {
       return;
     }
 
-    const round = KO_ROUNDS[raw.stage];
+    const round = KO_ROUNDS[raw.stage] || fm.round;
     if (!round) return;
     if (isPlaceholder(fm.home) || isPlaceholder(fm.away)) return;
 
