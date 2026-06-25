@@ -971,6 +971,32 @@ function renderBracket(){
     byRound[key]=arr;
   });
 
+  // --- Laatste 32 op VASTE bracketpositie zetten ---
+  // De feed levert de wedstrijden chronologisch; wij plaatsen ze op hun
+  // officiële plek via het matchnummer (KO_LEFT = bovenste/linker helft,
+  // KO_RIGHT = onderste/rechter helft, telkens top->onder).
+  // Resultaat-array: index 0..7 = linkerhelft, 8..15 = rechterhelft.
+  {
+    const order = KO_LEFT.concat(KO_RIGHT);   // 16 matchnummers in visuele volgorde
+    const r32 = WC_KO.filter(m=>m.round==="Round of 32");
+    const byNo = {};
+    r32.forEach(m=>{ if(m.matchNo) byNo[m.matchNo]=m; });
+    const placed = order.map(no=>{
+      if(byNo[no]) return byNo[no];
+      // geen feed-record voor dit matchnummer: toon de vaste affiche-codes
+      const aff = KO_AFF[no];
+      return aff ? {round:"Round of 32", matchNo:no, home:null, away:null,
+                    homePh:aff[0], awayPh:aff[1], hs:null, as_:null} : null;
+    });
+    // wedstrijden zonder matchNo (datum niet herkend) achteraan toevoegen op vrije plekken
+    const leftover = r32.filter(m=>!m.matchNo);
+    let li=0;
+    for(let i=0;i<placed.length && li<leftover.length;i++){
+      if(placed[i]==null) placed[i]=leftover[li++];
+    }
+    byRound["Round of 32"]=placed;
+  }
+
   const perHalf = KO_SIZE[ROUNDS[0]]/2;         // 8 buitenste ties per helft
   const colCount = ROUNDS.length;               // 4 kolommen per helft
   // verticale stap (pitch) van buitenste ronde
@@ -1308,6 +1334,43 @@ function normalizeFootballDataMatch(fm) {
   };
 }
 
+/* ================================================================
+   VASTE BRACKET-CONTEXT (officiële FIFA-structuur WK 2026)
+   - KO_CAL:   matchnummer -> utcDate (de FIFA-kalender ligt vast)
+   - KO_AFF:   matchnummer -> [thuisslot, uitslot] groepsposities
+   - KO_LEFT / KO_RIGHT: visuele top->onder volgorde per helft,
+                afgelezen uit de officiële Sporza/FIFA-bracketafbeelding.
+   We koppelen elke knockout-wedstrijd uit de feed via zijn utcDate aan
+   het matchnummer, en plaatsen die zo op de juiste vaste plek in de boom.
+   Lege slots tonen de groepspositie (bv. "3ABCDF") als plaatshouder.
+   ================================================================ */
+const KO_CAL = {
+  73:"2026-06-28T19:00:00Z", 74:"2026-06-29T20:30:00Z", 75:"2026-06-30T01:00:00Z",
+  76:"2026-06-29T17:00:00Z", 77:"2026-06-30T21:00:00Z", 78:"2026-06-30T17:00:00Z",
+  79:"2026-07-01T01:00:00Z", 80:"2026-07-01T16:00:00Z", 81:"2026-07-02T00:00:00Z",
+  82:"2026-07-01T20:00:00Z", 83:"2026-07-04T01:30:00Z", 84:"2026-07-02T23:00:00Z",
+  85:"2026-07-02T19:00:00Z", 86:"2026-07-03T22:00:00Z", 87:"2026-07-03T18:00:00Z",
+  88:"2026-07-03T03:00:00Z"
+};
+const KO_AFF = {
+  73:["2A","2B"], 74:["1E","3ABCDF"], 75:["1F","2C"], 76:["1C","2F"],
+  77:["1I","3CDFGH"], 78:["2E","2I"], 79:["1A","3CEFHI"], 80:["1L","3EHIJK"],
+  81:["1D","3BEFIJ"], 82:["1G","3AEHIJ"], 83:["2K","2L"], 84:["1H","2J"],
+  85:["1B","3EFGIJ"], 86:["1J","2H"], 87:["1K","3DEIJL"], 88:["2D","2G"]
+};
+// visuele volgorde per helft (top -> onder), afgeleid uit de officiële FIFA-
+// bracketkoppeling (R16: M89=W74/W77, M90=W73/W75, …; QF: M97=89/90, M98=93/94,
+// M99=91/92, M100=95/96; SF: M101=97/98, M102=99/100). Dit reproduceert exact
+// de Sporza/FIFA-afbeelding: Germany-kant links, Brazil-kant rechts.
+const KO_LEFT  = [74, 77, 73, 75, 83, 84, 81, 82];
+const KO_RIGHT = [76, 78, 79, 80, 86, 88, 85, 87];
+// match-id -> matchnummer wordt via utcDate bepaald (zie hieronder)
+function matchNoFromDate(utc){
+  if(!utc) return null;
+  for(const no in KO_CAL){ if(KO_CAL[no]===utc) return parseInt(no,10); }
+  return null;
+}
+
 function applyLiveData(json) {
   if (!json || !Array.isArray(json.matches)) return false;
 
@@ -1366,23 +1429,30 @@ function applyLiveData(json) {
     const round = KO_ROUNDS[raw.stage] || fm.round;
     if (!round) return;
 
+    // Bepaal het officiële matchnummer (voor R32) via de vaste FIFA-kalender.
+    const matchNo = matchNoFromDate(fm.utcDate);
+    const aff = (matchNo && KO_AFF[matchNo]) ? KO_AFF[matchNo] : null;
+
     // Knockout-wedstrijd. Een kant kan drie vormen hebben:
     //   - echt land (komt voor in POT)         -> tonen met vlag + code
     //   - een tekstuele plaatshouder ("1A",…)  -> grijze plaatshouder-tekst
-    //   - leeg (null/lege naam uit de bron)    -> "n.t.b." (nog te bepalen)
-    // We gooien de wedstrijd dus NOOIT meer weg, ook niet als een kant leeg is.
-    const classify = (name) => {
+    //   - leeg, maar we kennen de groepspositie -> die positiecode tonen ("3ABCDF")
+    //   - helemaal leeg                         -> "n.t.b."
+    // We gooien de wedstrijd dus NOOIT meer weg.
+    const classify = (name, slotCode) => {
       const t = (name == null) ? "" : String(name).trim();
-      if (t && (t in POT)) return { team: t, ph: null };       // echt land
-      if (t && !isPlaceholder(t)) return { team: null, ph: t };// onbekende naam -> als plaatshouder tonen
-      if (t) return { team: null, ph: t };                     // expliciete plaatshouder ("1A", "3 C/D")
-      return { team: null, ph: null };                         // leeg -> n.t.b.
+      if (t && (t in POT)) return { team: t, ph: null };        // echt land
+      if (t && !isPlaceholder(t)) return { team: null, ph: t }; // onbekende naam -> plaatshouder
+      if (t) return { team: null, ph: t };                      // expliciete plaatshouder
+      if (slotCode) return { team: null, ph: slotCode };        // leeg, maar positie gekend
+      return { team: null, ph: null };                          // volledig leeg -> n.t.b.
     };
-    const H = classify(fm.home);
-    const A = classify(fm.away);
+    const H = classify(fm.home, aff ? aff[0] : null);
+    const A = classify(fm.away, aff ? aff[1] : null);
 
     WC_KO.push({
       round,
+      matchNo,                 // officieel matchnummer (of null als datum onbekend)
       home: H.team,
       away: A.team,
       homePh: H.ph,
