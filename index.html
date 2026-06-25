@@ -804,6 +804,84 @@ function groupStandings(g){
   return {ranked,complete};
 }
 
+/* ================================================================
+   FALLBACK: bouw de laatste-32 op uit de groepsstanden.
+   Wanneer de live-bron de knockout-affiches (nog) niet levert, leiden we
+   ze zelf af: groepswinnaar (1X) en runner-up (2X) komen rechtstreeks uit
+   de stand; de acht beste nummers 3 worden volgens de officiële FIFA-
+   toewijzing aan de "3..."-slots gekoppeld.
+   Geeft een object terug: { "1E":"Germany", "2A":"South Africa", ... }.
+   Een code blijft onopgelost (afwezig) als de groep nog niet beslist is.
+   ================================================================ */
+// Officiële toewijzing van de 8 beste derdes aan de slots, afhankelijk van
+// WELKE acht groepen een derde leveren. Sleutel = gesorteerde groepsletters,
+// waarde = { slotgroep -> herkomstgroep }. (FIFA Annex C, courante gevallen.)
+// We dekken hier de toewijzing generiek af met de officiële prioriteitsregel:
+// elk 3e-plaats-slot somt toegestane groepen op; we koppelen via een vaste
+// volgorde zodat geen groep dubbel valt.
+const THIRD_SLOTS = {  // matchNo -> {pos:'home'|'away', allow:[groepen]}
+  74:{pos:'away', allow:['A','B','C','D','F']},
+  77:{pos:'away', allow:['C','D','F','G','H']},
+  79:{pos:'away', allow:['C','E','F','H','I']},
+  80:{pos:'away', allow:['E','H','I','J','K']},
+  81:{pos:'away', allow:['B','E','F','I','J']},
+  82:{pos:'away', allow:['A','E','H','I','J']},
+  85:{pos:'away', allow:['E','F','G','I','J']},
+  87:{pos:'away', allow:['D','E','I','J','L']}
+};
+function resolveSlots(){
+  const out={};
+  const groups=Object.keys(WC_GROUPS);
+
+  // 1) winnaars en runners-up rechtstreeks uit de stand
+  const thirds=[];
+  for(const g of groups){
+    const {ranked,complete}=groupStandings(g);
+    // alleen invullen als de groep is afgewerkt (anders is de volgorde nog niet zeker)
+    if(complete){
+      if(ranked[0]) out["1"+g]=ranked[0].team;
+      if(ranked[1]) out["2"+g]=ranked[1].team;
+      if(ranked[2]) thirds.push({team:ranked[2].team, group:g,
+        Pts:ranked[2].Pts, GD:ranked[2].GF-ranked[2].GA, GF:ranked[2].GF});
+    }
+  }
+
+  // 2) beste 8 derdes bepalen (zelfde tiebreak als het overzicht)
+  thirds.sort((x,y)=> y.Pts-x.Pts || y.GD-x.GD || y.GF-x.GF || x.group.localeCompare(y.group));
+  const top8 = thirds.slice(0,8);
+
+  // Alleen toewijzen als ALLE 12 groepen klaar zijn (dan liggen de 8 derdes vast).
+  const allComplete = groups.every(g=>groupStandings(g).complete);
+  if(allComplete && top8.length===8){
+    // Koppel elke derde aan een toegestaan slot. Grootste flexibiliteit eerst:
+    // sorteer slots op aantal nog-beschikbare kandidaten (minst eerst) en ken toe.
+    const byGroup={}; top8.forEach(t=>byGroup[t.group]=t.team);
+    const remainingGroups=new Set(top8.map(t=>t.group));
+    const slots=Object.keys(THIRD_SLOTS).map(Number);
+    // greedy met backtracking voor een geldige, volledige toewijzing
+    const assign={};
+    function solve(i){
+      if(i===slots.length) return remainingGroups.size===0;
+      const mn=slots[i];
+      for(const g of THIRD_SLOTS[mn].allow){
+        if(remainingGroups.has(g)){
+          assign[mn]=g; remainingGroups.delete(g);
+          if(solve(i+1)) return true;
+          remainingGroups.add(g); delete assign[mn];
+        }
+      }
+      return false;
+    }
+    if(solve(0)){
+      for(const mn in assign){
+        const g=assign[mn];
+        out["3@"+mn]=byGroup[g];   // sleutel per matchNo voor de 3e-plaats
+      }
+    }
+  }
+  return out;
+}
+
 /* (A) kwalificatie-overzicht */
 function renderQualOverview(){
   const groups=Object.keys(WC_GROUPS);
@@ -975,24 +1053,49 @@ function renderBracket(){
   // De feed levert de wedstrijden chronologisch; wij plaatsen ze op hun
   // officiële plek via het matchnummer (KO_LEFT = bovenste/linker helft,
   // KO_RIGHT = onderste/rechter helft, telkens top->onder).
-  // Resultaat-array: index 0..7 = linkerhelft, 8..15 = rechterhelft.
+  // Voor elke kant geldt de volgorde: (1) echt land uit de feed, anders
+  // (2) afgeleid uit de groepsstanden (fallback), anders (3) de slotcode.
   {
     const order = KO_LEFT.concat(KO_RIGHT);   // 16 matchnummers in visuele volgorde
     const r32 = WC_KO.filter(m=>m.round==="Round of 32");
     const byNo = {};
     r32.forEach(m=>{ if(m.matchNo) byNo[m.matchNo]=m; });
+
+    // afgeleide landen uit de standen (winnaars/runners-up/beste derdes)
+    const resolved = resolveSlots();
+    // zet een slotcode ("1E","2A","3ABCDF") om naar een echt land indien bekend
+    const teamForSlot = (code, matchNo, isAway) => {
+      if(!code) return null;
+      if(code[0]==='1' || code[0]==='2'){            // winnaar/runner-up
+        return resolved[code] || null;
+      }
+      if(code[0]==='3'){                             // beste 3e -> per matchNo
+        return resolved["3@"+matchNo] || null;
+      }
+      return null;
+    };
+
     const placed = order.map(no=>{
-      if(byNo[no]) return byNo[no];
-      // geen feed-record voor dit matchnummer: toon de vaste affiche-codes
-      const aff = KO_AFF[no];
-      return aff ? {round:"Round of 32", matchNo:no, home:null, away:null,
-                    homePh:aff[0], awayPh:aff[1], hs:null, as_:null} : null;
+      const aff = KO_AFF[no] || [null,null];
+      const fed = byNo[no];                          // feed-record (kan leeg zijn)
+      // bepaal home/away: feed-land > afgeleid land > plaatshouder(code)
+      const homeTeam = (fed && fed.home) ? fed.home : teamForSlot(aff[0], no, false);
+      const awayTeam = (fed && fed.away) ? fed.away : teamForSlot(aff[1], no, true);
+      const hs = fed ? fed.hs : null;
+      const as_ = fed ? fed.as_ : null;
+      return {
+        round:"Round of 32", matchNo:no,
+        home: homeTeam, away: awayTeam,
+        homePh: homeTeam ? null : aff[0],
+        awayPh: awayTeam ? null : aff[1],
+        hs, as_
+      };
     });
-    // wedstrijden zonder matchNo (datum niet herkend) achteraan toevoegen op vrije plekken
-    const leftover = r32.filter(m=>!m.matchNo);
+    // feed-records zonder matchNo (datum/id niet herkend) op vrije plekken
+    const leftover = r32.filter(m=>!m.matchNo && (m.home||m.away));
     let li=0;
     for(let i=0;i<placed.length && li<leftover.length;i++){
-      if(placed[i]==null) placed[i]=leftover[li++];
+      if(!placed[i].home && !placed[i].away) placed[i]=leftover[li++];
     }
     byRound["Round of 32"]=placed;
   }
