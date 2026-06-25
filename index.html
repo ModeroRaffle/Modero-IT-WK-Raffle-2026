@@ -1330,9 +1330,11 @@ function applyLiveData(json) {
 
   json.matches.forEach(raw => {
     const fm = normalizeFootballDataMatch(raw);
-    if (!fm.home || !fm.away) return;
 
     if (raw.stage === "GROUP_STAGE" || fm.group) {
+      // Groepswedstrijd: beide teams nodig om te kunnen matchen met WC_MATCHES.
+      if (!fm.home || !fm.away) return;
+
       const grp = String(fm.group || "")
         .replace("GROUP_", "")
         .replace("Group ", "")
@@ -1364,18 +1366,27 @@ function applyLiveData(json) {
     const round = KO_ROUNDS[raw.stage] || fm.round;
     if (!round) return;
 
-    // Optie B: gooi wedstrijden met plaatshouders NIET weg.
-    // Een echte landnaam (komt voor in POT) tonen we als land; een plaatshouder
-    // (bv. "1A", "2B", "3 C/E/F", "Winner Group A") tonen we als grijze tekst.
-    const homePh = isPlaceholder(fm.home) || !(fm.home in POT);
-    const awayPh = isPlaceholder(fm.away) || !(fm.away in POT);
+    // Knockout-wedstrijd. Een kant kan drie vormen hebben:
+    //   - echt land (komt voor in POT)         -> tonen met vlag + code
+    //   - een tekstuele plaatshouder ("1A",…)  -> grijze plaatshouder-tekst
+    //   - leeg (null/lege naam uit de bron)    -> "n.t.b." (nog te bepalen)
+    // We gooien de wedstrijd dus NOOIT meer weg, ook niet als een kant leeg is.
+    const classify = (name) => {
+      const t = (name == null) ? "" : String(name).trim();
+      if (t && (t in POT)) return { team: t, ph: null };       // echt land
+      if (t && !isPlaceholder(t)) return { team: null, ph: t };// onbekende naam -> als plaatshouder tonen
+      if (t) return { team: null, ph: t };                     // expliciete plaatshouder ("1A", "3 C/D")
+      return { team: null, ph: null };                         // leeg -> n.t.b.
+    };
+    const H = classify(fm.home);
+    const A = classify(fm.away);
 
     WC_KO.push({
       round,
-      home: homePh ? null : fm.home,
-      away: awayPh ? null : fm.away,
-      homePh: homePh ? String(fm.home || "").trim() : null,
-      awayPh: awayPh ? String(fm.away || "").trim() : null,
+      home: H.team,
+      away: A.team,
+      homePh: H.ph,
+      awayPh: A.ph,
       hs: fm.hs,
       as_: fm.as_,
     });
