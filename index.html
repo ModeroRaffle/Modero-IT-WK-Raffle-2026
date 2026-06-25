@@ -1472,28 +1472,33 @@ async function loadLiveData(){
   const stamp = ()=> new Date().toLocaleString('nl-BE');
   let loaded = false;
 
-  // 1) Primair: worldcup26.ir (live scores, geen sleutel)
+  // 1) Primair: football-data.org via Modero-proxy.
+  //    Deze bron levert de volledige structuur (groepen én knockout) met
+  //    stage/utcDate/id, die de bracketlogica nodig heeft.
   try{
-    const res=await fetch(WC26_URL, {cache:"no-store"});
+    const res = await fetch(LIVE_URL, {cache:"no-store"});
     if(res.ok){
-      const raw=await res.json();
-      const norm=normalizeWC26(raw);
-      if(norm && applyLiveData(norm)){
+      const json = await res.json();
+      if(json && Array.isArray(json.matches) && json.matches.length){
+        applyLiveData(json);
         loaded=true;
-        if(note) note.textContent="Bron: worldcup26.ir (live) — laatst geladen "+stamp();
+        if(note) note.textContent="Bron: football-data.org via Modero proxy — laatst geladen "+stamp();
       }
     }
-  }catch(e){ /* val stil terug op openfootball */ }
+  }catch(e){ /* val stil terug op worldcup26.ir */ }
 
-  // 2) Terugval: openfootball
+  // 2) Terugval: worldcup26.ir (live scores, geen knockout-structuur)
   if(!loaded){
     try{
-      const res = await fetch(LIVE_URL, {cache:"default"});
-      if(!res.ok) throw new Error("HTTP "+res.status);
-      const json=await res.json();
-      applyLiveData(json);
-      loaded=true;
-      if(note) note.textContent="Bron: football-data.org via Modero proxy — laatst geladen "+new Date().toLocaleString('nl-BE');
+      const res=await fetch(WC26_URL, {cache:"no-store"});
+      if(res.ok){
+        const raw=await res.json();
+        const norm=normalizeWC26(raw);
+        if(norm && applyLiveData(norm)){
+          loaded=true;
+          if(note) note.textContent="Bron: worldcup26.ir (live) — laatst geladen "+stamp();
+        }
+      }
     }catch(e){
       if(note) note.textContent="Bron: handmatig (automatische data niet bereikbaar)";
     }
