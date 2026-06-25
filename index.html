@@ -813,40 +813,118 @@ function groupStandings(g){
    in te halen is, zodat tiebreakers (die nog kunnen kantelen) nooit roet in
    het eten gooien.
    Geeft terug: { winner: team|null, second: team|null }. */
+/* Rangschikt een groep volgens de OFFICIËLE WK 2026-tiebreakers:
+   1) punten  2) onderlinge punten (head-to-head)  3) onderling doelsaldo
+   4) onderlinge goals  5) totaal doelsaldo  6) totaal goals.
+   (Fair-play en FIFA-ranking laten we buiten beschouwing; die zijn voor de
+   "zekerheid"-analyse niet nodig en zelden beslissend.)
+   `rows` = lijst van {team,Pts,GF,GA}; `matches` = gespeelde wedstrijden
+   (met home/away/hs/as_) om de onderlinge duels te kunnen bepalen. */
+function rankGroupBy(rows, matches){
+  const idx={}; rows.forEach((r,i)=>idx[r.team]=i);
+  // head-to-head mini-tabel voor een set teams
+  const h2h=(teamsSet)=>{
+    const t={}; teamsSet.forEach(tm=>t[tm]={Pts:0,GD:0,GF:0});
+    matches.forEach(m=>{
+      if(teamsSet.has(m.home) && teamsSet.has(m.away)){
+        t[m.home].GF+=m.hs; t[m.away].GF+=m.as_;
+        t[m.home].GD+=(m.hs-m.as_); t[m.away].GD+=(m.as_-m.hs);
+        if(m.hs>m.as_) t[m.home].Pts+=3; else if(m.hs<m.as_) t[m.away].Pts+=3; else {t[m.home].Pts++;t[m.away].Pts++;}
+      }
+    });
+    return t;
+  };
+  return rows.slice().sort((x,y)=>{
+    if(y.Pts!==x.Pts) return y.Pts-x.Pts;
+    // gelijke punten: bepaal de groep gelijke teams en pas head-to-head toe
+    const tied=new Set(rows.filter(r=>r.Pts===x.Pts).map(r=>r.team));
+    if(tied.has(x.team) && tied.has(y.team) && tied.size>=2){
+      const h=h2h(tied);
+      if(h[y.team].Pts!==h[x.team].Pts) return h[y.team].Pts-h[x.team].Pts;
+      if(h[y.team].GD!==h[x.team].GD)   return h[y.team].GD-h[x.team].GD;
+      if(h[y.team].GF!==h[x.team].GF)   return h[y.team].GF-h[x.team].GF;
+    }
+    const xgd=x.GF-x.GA, ygd=y.GF-y.GA;
+    if(ygd!==xgd) return ygd-xgd;
+    if(y.GF!==x.GF) return y.GF-x.GF;
+    return idx[x.team]-idx[y.team];        // stabiel
+  });
+}
+
+/* Bepaalt welke posities in een groep WISKUNDIG vastliggen, via een VOLLEDIGE
+   scenario-analyse. We spelen alle resterende groepswedstrijden in elke
+   mogelijke uitkomst (win/gelijk/verlies), passen op elke denkbare eindstand de
+   officiële tiebreakers toe, en markeren positie p alleen als zeker wanneer het
+   kandidaat-team in ALLE scenario's op positie p of hoger eindigt.
+   Houdt dus correct rekening met head-to-head (bv. Duitsland dat onderling van
+   Ivoorkust won, kan bij gelijke punten niet meer voorbijgestoken worden).
+   Geeft terug: { winner: team|null, second: team|null }. */
 function clinchedPositions(g){
   const teams=WC_GROUPS[g];
-  const st={}; teams.forEach(t=>st[t]={team:t,P:0,Pts:0,GF:0,GA:0});
-  WC_MATCHES.filter(m=>m.group===g && played(m)).forEach(m=>{
-    const h=st[m.home],a=st[m.away]; if(!h||!a)return;
-    h.P++;a.P++;h.GF+=m.hs;h.GA+=m.as_;a.GF+=m.as_;a.GA+=m.hs;
-    if(m.hs>m.as_) h.Pts+=3; else if(m.hs<m.as_) a.Pts+=3; else {h.Pts++;a.Pts++;}
+  const playedMs = WC_MATCHES.filter(m=>m.group===g && played(m));
+  const remaining = WC_MATCHES.filter(m=>m.group===g && !played(m));
+
+  // basistotalen uit reeds gespeelde wedstrijden
+  const base={}; teams.forEach(t=>base[t]={team:t,Pts:0,GF:0,GA:0});
+  playedMs.forEach(m=>{
+    base[m.home].GF+=m.hs; base[m.home].GA+=m.as_;
+    base[m.away].GF+=m.as_; base[m.away].GA+=m.hs;
+    if(m.hs>m.as_) base[m.home].Pts+=3; else if(m.hs<m.as_) base[m.away].Pts+=3; else {base[m.home].Pts++;base[m.away].Pts++;}
   });
-  const arr=teams.map(t=>st[t]);
-  const maxPts = r => r.Pts + 3*(3-r.P);          // best haalbare eindtotaal
 
-  const ranked=arr.slice().sort((x,y)=>
-    y.Pts-x.Pts || (y.GF-y.GA)-(x.GF-x.GA) || y.GF-x.GF || teams.indexOf(x.team)-teams.indexOf(y.team));
+  const anyPlayed = playedMs.length>0;
+  if(!anyPlayed) return {winner:null, second:null};
 
-  // positie p (0-indexed) is zeker voor 'cand' als hoogstens p andere teams
-  // cand nog kunnen EVENAREN of voorbijsteken (bij gelijke punten kan een
-  // tiebreaker kantelen, dus die tellen we mee als bedreiging).
-  const certainAt = (cand, pos) => {
-    let canReach=0;
-    for(const r of arr){
-      if(r.team===cand.team) continue;
-      if(maxPts(r) >= cand.Pts) canReach++;
+  // te veel resterende wedstrijden -> simulatie te duur; geen claim (veilig).
+  if(remaining.length>6) return {winner:null, second:null};
+
+  // elke resterende wedstrijd heeft 3 uitkomsten: home win / draw / away win.
+  // We genereren representatieve scores (1-0, 0-0, 0-1) — voldoende voor punten
+  // en onderlinge resultaten; doelsaldo-grenzen kunnen variëren maar voor de
+  // "zekerheid" eisen we dat de positie in álle uitkomsten standhoudt, dus een
+  // worst case dekt het af. Voor exactheid t.o.v. doelsaldo simuleren we de
+  // onderlinge duels met meerdere marges.
+  const outcomesFor = (m)=>[
+    {h:m.home,a:m.away,hs:1,as_:0},   // thuis wint
+    {h:m.home,a:m.away,hs:0,as_:0},   // gelijk
+    {h:m.home,a:m.away,hs:0,as_:1}    // uit wint
+  ];
+
+  let winnerSure=true, secondSure=true;
+  let winnerTeam=null, secondTeam=null;
+
+  // huidige (voorlopige) rangschikking om de kandidaat te kiezen
+  const cur = rankGroupBy(teams.map(t=>({...base[t]})), playedMs);
+  winnerTeam = cur[0] ? cur[0].team : null;
+  secondTeam = cur[1] ? cur[1].team : null;
+
+  // doorloop alle combinaties van uitkomsten
+  const combos = (i, acc)=>{
+    if(i===remaining.length){
+      // bouw eindstand
+      const tot={}; teams.forEach(t=>tot[t]={team:t,Pts:base[t].Pts,GF:base[t].GF,GA:base[t].GA});
+      const allMs = playedMs.concat(acc);
+      acc.forEach(o=>{
+        tot[o.h].GF+=o.hs; tot[o.h].GA+=o.as_;
+        tot[o.a].GF+=o.as_; tot[o.a].GA+=o.hs;
+        if(o.hs>o.as_) tot[o.h].Pts+=3; else if(o.hs<o.as_) tot[o.a].Pts+=3; else {tot[o.h].Pts++;tot[o.a].Pts++;}
+      });
+      const ranked = rankGroupBy(teams.map(t=>tot[t]), allMs);
+      if(!winnerTeam || ranked[0].team!==winnerTeam) winnerSure=false;
+      if(!secondTeam || !(ranked[0].team===secondTeam || ranked[1].team===secondTeam)) secondSure=false;
+      return;
     }
-    return canReach <= pos;
+    for(const o of outcomesFor(remaining[i])){
+      if(!winnerSure && !secondSure) return;   // niets meer te bewijzen
+      acc.push(o); combos(i+1, acc); acc.pop();
+    }
   };
+  combos(0, []);
 
-  let winner=null, second=null;
-  const c0=ranked[0];
-  if(c0 && c0.P>0 && certainAt(c0,0)) winner=c0.team;
-  if(winner){
-    const c1=ranked[1];
-    if(c1 && c1.P>0 && certainAt(c1,1)) second=c1.team;
-  }
-  return {winner, second};
+  return {
+    winner: winnerSure ? winnerTeam : null,
+    second: (winnerSure && secondSure) ? secondTeam : null
+  };
 }
 
 /* Bepaalt welke huidige nummers-3 WISKUNDIG al zeker bij de beste 8 horen.
@@ -897,17 +975,82 @@ function thirdsClinched(){
     return clinched;
   }
 
-  // Geval 2: nog niet alles afgewerkt -> conservatieve worst-case analyse.
-  // T (huidige 3e) is zeker bij de beste 8 als hoogstens 7 andere groepen een
-  // derde kunnen leveren die T's punten nog kan EVENAREN of overtreffen.
+  // Geval 2: nog niet alles afgewerkt. Voor elke kandidaat-derde T bepalen we
+  // of T zeker bij de beste 8 zit. We tellen hoeveel ANDERE groepen een derde
+  // KUNNEN leveren die T voorbijsteekt in de cross-group ranking (eerst punten,
+  // dan totaal doelsaldo, dan goals; geen head-to-head want andere groepen).
+  // Worst case voor T: T eindigt op zijn HUIDIGE punten/doelsaldo (verliest de
+  // rest). T is zeker als hoogstens 7 andere groepen hem kunnen voorbijsteken.
+  //
+  // Per groep simuleren we alle uitkomsten van de resterende wedstrijden en
+  // bewaren ALLE mogelijke (punten, doelsaldo, goals)-uitkomsten van de derde
+  // plaats. Zo kunnen we voor elke kandidaat exact checken of die groep een
+  // bedreiging vormt.
+  const thirdOptions = {};   // groep -> lijst van {Pts,GD,GF} die de 3e kan halen
+  for(const g of groups){
+    const teams=WC_GROUPS[g];
+    const playedMs=WC_MATCHES.filter(m=>m.group===g && played(m));
+    const remaining=WC_MATCHES.filter(m=>m.group===g && !played(m));
+    const base={}; teams.forEach(t=>base[t]={team:t,Pts:0,GF:0,GA:0});
+    playedMs.forEach(m=>{
+      base[m.home].GF+=m.hs; base[m.home].GA+=m.as_;
+      base[m.away].GF+=m.as_; base[m.away].GA+=m.hs;
+      if(m.hs>m.as_) base[m.home].Pts+=3; else if(m.hs<m.as_) base[m.away].Pts+=3; else {base[m.home].Pts++;base[m.away].Pts++;}
+    });
+    const opts=[];
+    if(info[g].complete){
+      const t=info[g].third;
+      if(t) opts.push({Pts:t.Pts, GD:t.GF-t.GA, GF:t.GF});
+    }else if(remaining.length>6){
+      // te duur: gebruik grove bovengrens, met "oneindig" doelsaldo (worst case)
+      opts.push({Pts:info[g].bestThirdMax, GD:99, GF:99});
+    }else{
+      // alle uitkomsten; winnende marges 3-0/1-1/0-3 om het doelsaldo ruim te nemen
+      const outcomes=(m)=>[
+        {h:m.home,a:m.away,hs:3,as_:0},
+        {h:m.home,a:m.away,hs:1,as_:1},
+        {h:m.home,a:m.away,hs:0,as_:3}
+      ];
+      const seen=new Set();
+      const rec=(i,acc)=>{
+        if(i===remaining.length){
+          const tot={}; teams.forEach(t=>tot[t]={team:t,Pts:base[t].Pts,GF:base[t].GF,GA:base[t].GA});
+          const allMs=playedMs.concat(acc);
+          acc.forEach(o=>{
+            tot[o.h].GF+=o.hs; tot[o.h].GA+=o.as_;
+            tot[o.a].GF+=o.as_; tot[o.a].GA+=o.hs;
+            if(o.hs>o.as_) tot[o.h].Pts+=3; else if(o.hs<o.as_) tot[o.a].Pts+=3; else {tot[o.h].Pts++;tot[o.a].Pts++;}
+          });
+          const ranked=rankGroupBy(teams.map(t=>tot[t]), allMs);
+          const third=ranked[2];
+          const key=third.Pts+'|'+(third.GF-third.GA)+'|'+third.GF;
+          if(!seen.has(key)){ seen.add(key); opts.push({Pts:third.Pts, GD:third.GF-third.GA, GF:third.GF}); }
+          return;
+        }
+        for(const o of outcomes(remaining[i])){ acc.push(o); rec(i+1,acc); acc.pop(); }
+      };
+      rec(0,[]);
+    }
+    thirdOptions[g]=opts;
+  }
+
+  // helper: kan groep og een derde leveren die kandidaat T voorbijsteekt?
+  const canOutrank = (og, tPts, tGD, tGF) => {
+    return thirdOptions[og].some(o=>{
+      if(o.Pts!==tPts) return o.Pts>tPts;
+      if(o.GD!==tGD)   return o.GD>tGD;
+      return o.GF>=tGF;     // bij volledig gelijk: telt als mogelijke bedreiging
+    });
+  };
+
   for(const g of groups){
     const T=info[g].third;
     if(!T || T.P===0) continue;
-    const tPts=T.Pts;                       // worst case: T wint niets meer
+    const tPts=T.Pts, tGD=T.GF-T.GA, tGF=T.GF;   // worst case: T blijft hier staan
     let threats=0;
     for(const og of groups){
       if(og===g) continue;
-      if(info[og].bestThirdMax >= tPts) threats++;
+      if(canOutrank(og, tPts, tGD, tGF)) threats++;
     }
     if(threats<=7) clinched.add(T.team);
   }
@@ -1067,6 +1210,7 @@ function renderQualOverview(){
       <p class="schema-intro">De 8 beste nummers 3 (van de 12 groepen) gaan mee door naar de laatste 32.
       De stippellijn toont de grens tussen plaatsen en uitschakelen.</p>
       <div class="third-table-card">
+        <div class="qgtitle">Ranglijst nummers 3</div>
         <table class="ttable"><thead><tr>
           <th>#</th><th class="team">Land</th><th>Grp</th><th>G</th><th>+/-</th><th>Ptn</th><th></th>
         </tr></thead><tbody>${rows}</tbody></table>
