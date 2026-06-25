@@ -391,6 +391,7 @@ footer .powered .brand{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;let
 .ttable tr.cutline td{border-bottom:2px dashed rgba(255,90,90,.5)}
 .ttable .qd{font-size:.55rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
   padding:2px 7px;border-radius:100px;background:rgba(32,200,107,.16);color:#0f8f4c}
+.ttable .qd.sure{background:#20c86b;color:#fff;box-shadow:0 2px 8px rgba(32,200,107,.4)}
 
 /* — knockout-boom (SVG-lijnen + absolute vakjes) — */
 /* — knockout-boom: breekt uit de smalle kolom zodat hij volledig past — */
@@ -848,6 +849,71 @@ function clinchedPositions(g){
   return {winner, second};
 }
 
+/* Bepaalt welke huidige nummers-3 WISKUNDIG al zeker bij de beste 8 horen.
+   Aanpak (conservatief, dus nooit een vals-positieve):
+   - Voor het kandidaat-team T nemen we het SLECHTSTE geval: T haalt geen enkel
+     punt meer (eindigt op zijn huidige punten als derde van zijn groep).
+   - Voor elke ANDERE groep bepalen we het maximaal haalbare puntentotaal dat
+     een derde-plaats daar nog kan bereiken (de op-twee-na-hoogste max). Dat is
+     het sterkst mogelijke concurrerende nummer 3 uit die groep.
+   - T is zeker bij de beste 8 als hoogstens 7 andere groepen een derde kunnen
+     leveren met meer punten dan T (strikt meer; bij gelijke punten kan een
+     tiebreaker kantelen, dus die tellen we mee als bedreiging).
+   Geeft een Set van teamnamen terug die al zeker doorgaan als beste 3e. */
+function thirdsClinched(){
+  const groups=Object.keys(WC_GROUPS);
+
+  // huidige stand + per groep de max haalbare punten per team
+  const info={};
+  let allComplete=true;
+  for(const g of groups){
+    const teams=WC_GROUPS[g];
+    const st={}; teams.forEach(t=>st[t]={team:t,P:0,Pts:0,GF:0,GA:0});
+    WC_MATCHES.filter(m=>m.group===g && played(m)).forEach(m=>{
+      const h=st[m.home],a=st[m.away]; if(!h||!a)return;
+      h.P++;a.P++;h.GF+=m.hs;h.GA+=m.as_;a.GF+=m.as_;a.GA+=m.hs;
+      if(m.hs>m.as_) h.Pts+=3; else if(m.hs<m.as_) a.Pts+=3; else {h.Pts++;a.Pts++;}
+    });
+    const arr=teams.map(t=>st[t]);
+    const ranked=arr.slice().sort((x,y)=> y.Pts-x.Pts || (y.GF-y.GA)-(x.GF-x.GA) || y.GF-x.GF || teams.indexOf(x.team)-teams.indexOf(y.team));
+    const maxPts=r=>r.Pts+3*(3-r.P);
+    const maxima=arr.map(maxPts).sort((a,b)=>b-a);
+    const bestThirdMax = maxima[2]!=null ? maxima[2] : 0;
+    const complete = ranked.every(r=>r.P>=3);
+    if(!complete) allComplete=false;
+    info[g]={ ranked, third: ranked[2], bestThirdMax, complete };
+  }
+
+  const clinched=new Set();
+
+  // Geval 1: alle groepen afgewerkt -> de 8 beste derdes liggen exact vast.
+  if(allComplete){
+    const thirds=groups.map(g=>{
+      const t=info[g].third;
+      return t ? {team:t.team, Pts:t.Pts, GD:t.GF-t.GA, GF:t.GF, group:g} : null;
+    }).filter(Boolean);
+    thirds.sort((x,y)=> y.Pts-x.Pts || y.GD-x.GD || y.GF-x.GF || x.group.localeCompare(y.group));
+    thirds.slice(0,8).forEach(t=>clinched.add(t.team));
+    return clinched;
+  }
+
+  // Geval 2: nog niet alles afgewerkt -> conservatieve worst-case analyse.
+  // T (huidige 3e) is zeker bij de beste 8 als hoogstens 7 andere groepen een
+  // derde kunnen leveren die T's punten nog kan EVENAREN of overtreffen.
+  for(const g of groups){
+    const T=info[g].third;
+    if(!T || T.P===0) continue;
+    const tPts=T.Pts;                       // worst case: T wint niets meer
+    let threats=0;
+    for(const og of groups){
+      if(og===g) continue;
+      if(info[og].bestThirdMax >= tPts) threats++;
+    }
+    if(threats<=7) clinched.add(T.team);
+  }
+  return clinched;
+}
+
 /* ================================================================
    FALLBACK: bouw de laatste-32 op uit de groepsstanden.
    Wanneer de live-bron de knockout-affiches (nog) niet levert, leiden we
@@ -937,21 +1003,28 @@ function renderQualOverview(){
   const groups=Object.keys(WC_GROUPS);
 
   // — per groep: top 2 + 3e —
+  const thirdSafe = thirdsClinched();   // teams die al zeker beste-3e zijn
   let cards='';
   for(const g of groups){
     const {ranked,complete}=groupStandings(g);
     const anyPlayed=ranked.some(r=>r.P>0);
     const statusTxt = complete ? 'Afgewerkt' : (anyPlayed ? 'Loopt nog' : 'Nog niet gestart');
+    // wiskundig vastliggende posities (ook als de groep nog niet af is)
+    const clinch = clinchedPositions(g);
+    const secured1 = ranked[0] && (complete || clinch.winner===ranked[0].team);
+    const secured2 = ranked[1] && (complete || clinch.second===ranked[1].team);
 
     const slot=(r,pos)=>{
       if(!r || r.P===0){
         return `<div class="qslot empty-slot"><span class="qpos">${pos}</span>
           <span class="qmark">?</span><span class="qname">nog te bepalen</span></div>`;
       }
-      const cls = pos<=2 ? (complete?'secured':'provisional') : 'third';
+      const safe3 = pos===3 && thirdSafe.has(r.team);
+      const isSecured = pos===1 ? secured1 : (pos===2 ? secured2 : safe3);
+      const cls = pos<=2 ? (isSecured?'secured':'provisional') : (safe3?'secured':'third');
       let badge;
-      if(pos<=2) badge = complete ? 'Geplaatst' : 'Voorlopig';
-      else       badge = 'Beste-3e?';
+      if(pos<=2) badge = isSecured ? 'Geplaatst' : 'Voorlopig';
+      else       badge = safe3 ? 'Beste-3e ✓' : 'Beste-3e?';
       return `<div class="qslot ${cls}">
         <span class="qpos">${pos}</span>${flagImg(r.team)}
         <span class="qname">${esc(r.team)}</span>
@@ -979,12 +1052,15 @@ function renderQualOverview(){
       const gd=r.GF-r.GA, gds=gd>0?('+'+gd):(''+gd);
       const inTop8 = i<8;
       const cutline = i===7 ? 'cutline' : '';
-      return `<tr class="${inTop8?'in':''} ${cutline}">
+      const safe = thirdSafe.has(r.team);     // wiskundig zeker doorgegaan
+      const doorLabel = safe ? '<span class="qd sure">Door ✓</span>'
+                             : (inTop8 ? '<span class="qd">Door</span>' : '');
+      return `<tr class="${(inTop8||safe)?'in':''} ${cutline}">
         <td>${i+1}</td>
         <td class="team">${flagImg(r.team)}<span>${esc(r.team)}</span></td>
         <td class="grp">${r.group}</td>
         <td>${r.P}</td><td>${gds}</td><td class="pts">${r.Pts}</td>
-        <td>${inTop8?'<span class="qd">Door</span>':''}</td>
+        <td>${doorLabel}</td>
       </tr>`;
     }).join('');
     thirdCard=`<div class="schema-section-title">Beste nummers 3</div>
@@ -1539,6 +1615,52 @@ const KO_ID = {
   537420:85, 537427:86, 537428:87, 537429:88
 };
 
+/* ================================================================
+   CACHE: onthoud de laatst bekende goede data in de browser.
+   De live-bron (proxy) geeft soms tijdelijk een verouderde/lege feed terug.
+   Door de laatste goede scores + knockout-records te bewaren en bij het
+   opstarten meteen te laden, blijft de pagina stabiel gevuld i.p.v. kaal te
+   beginnen wanneer net een slechte feed binnenkomt.
+   ================================================================ */
+const CACHE_KEY = "moderoWK2026_cache_v1";
+
+function saveCache(){
+  try{
+    // groepsscores per wedstrijd-id (alleen gespeelde) + alle knockout-records
+    const scores={};
+    WC_MATCHES.forEach(m=>{ if(m.hs!=null && m.as_!=null) scores[m.id]=[m.hs,m.as_]; });
+    const payload={ when:Date.now(), scores, ko:WC_KO };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+  }catch(e){ /* localStorage kan geblokkeerd zijn; dan gewoon overslaan */ }
+}
+
+function loadCache(){
+  try{
+    const raw=localStorage.getItem(CACHE_KEY);
+    if(!raw) return false;
+    const data=JSON.parse(raw);
+    if(!data || !data.scores) return false;
+    // herstel groepsscores
+    WC_MATCHES.forEach(m=>{
+      const s=data.scores[m.id];
+      if(s && (m.hs==null || m.as_==null)){ m.hs=s[0]; m.as_=s[1]; }
+    });
+    // herstel knockout-records als er nu nog geen zijn
+    if(Array.isArray(data.ko) && (!WC_KO || !WC_KO.length)){ WC_KO = data.ko; }
+    return true;
+  }catch(e){ return false; }
+}
+
+// Telt hoeveel groepswedstrijden in de feed daadwerkelijk een uitslag hebben.
+// Gebruikt om een "goede" (verse) feed te onderscheiden van een lege/verouderde.
+function feedHasScores(json){
+  const list = Array.isArray(json) ? json : (json && json.matches) ? json.matches : [];
+  return list.some(m=>{
+    const ft = m && m.score && m.score.fullTime;
+    return ft && ft.home!=null && ft.away!=null;
+  });
+}
+
 function applyLiveData(json) {
   // Wees flexibel met de top-level structuur van de bron:
   // football-data geeft {matches:[...]}, maar een proxy kan inpakken of
@@ -1651,6 +1773,11 @@ async function loadLiveData(){
   const stamp = ()=> new Date().toLocaleString('nl-BE');
   let loaded = false;
 
+  // Laad eerst de laatst bekende goede data uit de cache, zodat de boom en het
+  // klassement nooit kaal beginnen terwijl we op de (mogelijk trage of tijdelijk
+  // verouderde) live-bron wachten.
+  const hadCache = loadCache();
+
   // 1) Primair: football-data.org via Modero-proxy.
   //    Deze bron levert de volledige structuur (groepen én knockout) met
   //    stage/utcDate/id, die de bracketlogica nodig heeft.
@@ -1659,9 +1786,17 @@ async function loadLiveData(){
     if(res.ok){
       const json = await res.json();
       if(json && Array.isArray(json.matches) && json.matches.length){
-        applyLiveData(json);
-        loaded=true;
-        if(note) note.textContent="Bron: football-data.org via Modero proxy — laatst geladen "+stamp();
+        if(feedHasScores(json)){
+          // verse feed met echte uitslagen -> toepassen en bewaren
+          applyLiveData(json);
+          saveCache();
+          loaded=true;
+          if(note) note.textContent="Bron: football-data.org via Modero proxy — laatst geladen "+stamp();
+        }else if(hadCache){
+          // feed bevat (nog) geen uitslagen: behoud de gecachte data
+          loaded=true;
+          if(note) note.textContent="Bron: laatst bekende gegevens (live-bron tijdelijk zonder uitslagen) — "+stamp();
+        }
       }
     }
   }catch(e){ /* val stil terug op worldcup26.ir */ }
@@ -1673,14 +1808,22 @@ async function loadLiveData(){
       if(res.ok){
         const raw=await res.json();
         const norm=normalizeWC26(raw);
-        if(norm && applyLiveData(norm)){
+        if(norm && feedHasScores(norm) && applyLiveData(norm)){
+          saveCache();
           loaded=true;
           if(note) note.textContent="Bron: worldcup26.ir (live) — laatst geladen "+stamp();
         }
       }
-    }catch(e){
-      if(note) note.textContent="Bron: handmatig (automatische data niet bereikbaar)";
-    }
+    }catch(e){ /* hieronder afgehandeld */ }
+  }
+
+  // 3) Geen enkele verse bron, maar wel cache -> toon de gecachte gegevens.
+  if(!loaded && hadCache){
+    loaded=true;
+    if(note) note.textContent="Bron: laatst bekende gegevens (live-bron niet bereikbaar) — "+stamp();
+  }
+  if(!loaded && note){
+    note.textContent="Bron: handmatig (automatische data niet bereikbaar)";
   }
 
   // herteken alles met (mogelijk) bijgewerkte data
