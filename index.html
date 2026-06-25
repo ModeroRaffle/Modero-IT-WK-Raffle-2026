@@ -334,6 +334,124 @@ footer .powered .brand{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;let
 .gpos{color:var(--text-dim);font-weight:800;width:22px}
 @media(max-width:680px){ .groups-grid{grid-template-columns:1fr} }
 
+/* ----- SCHEMA / KWALIFICATIE ----- */
+.schema-intro{text-align:center;color:var(--text-dim);font-size:.86rem;font-weight:600;
+  max-width:620px;margin:0 auto 22px;line-height:1.5}
+.schema-section-title{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:.05em;
+  text-align:center;margin:6px 0 18px;color:var(--text)}
+
+/* — kwalificatie-overzicht (voor de knockout-loting bekend is) — */
+.qual-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:38px}
+.qgcard{background:rgba(255,255,255,.86);border:1px solid rgba(24,62,118,.12);border-radius:14px;
+  overflow:hidden;box-shadow:0 18px 48px rgba(47,79,124,.10);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.qgcard .qgtitle{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:.05em;
+  padding:7px 14px;color:#fff;display:flex;justify-content:space-between;align-items:center;
+  background:linear-gradient(90deg,#8648ff 0%,#0b78ff 48%,#16c987 100%)}
+.qgtitle .gstatus{font-family:'Archivo',sans-serif;font-size:.56rem;font-weight:800;letter-spacing:.08em;
+  text-transform:uppercase;background:rgba(255,255,255,.22);padding:2px 8px;border-radius:100px}
+.qslot{display:flex;align-items:center;gap:9px;padding:9px 13px;font-size:.84rem;font-weight:700;
+  border-bottom:1px solid rgba(24,62,118,.07);color:var(--text)}
+.qslot:last-child{border-bottom:none}
+.qslot .qpos{font-family:'Bebas Neue',sans-serif;font-size:.92rem;width:18px;color:var(--text-dim)}
+.qslot .flag{width:26px;height:18px;border-radius:3px;box-shadow:0 1px 3px rgba(0,0,0,.18);flex:none}
+.qslot .qname{flex:1}
+.qslot .qbadge{font-size:.56rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 8px;border-radius:100px;flex:none}
+.qslot.secured{background:linear-gradient(90deg,rgba(32,200,107,.16),transparent)}
+.qslot.secured .qpos{color:var(--pot1)}
+.qslot.secured .qbadge{background:rgba(32,200,107,.18);color:#0f8f4c}
+.qslot.provisional .qbadge{background:rgba(247,181,0,.20);color:#b07d00}
+.qslot.third{background:linear-gradient(90deg,rgba(11,120,255,.07),transparent)}
+.qslot.third .qpos{color:var(--pot2)}
+.qslot.third .qbadge{background:rgba(11,120,255,.16);color:#0b62cf}
+.qslot.empty-slot{color:var(--text-dim);font-style:italic;font-weight:600}
+.qslot.empty-slot .qpos{opacity:.5}
+.qslot .qmark{width:26px;height:18px;border-radius:3px;flex:none;
+  background:repeating-linear-gradient(45deg,rgba(24,62,118,.08),rgba(24,62,118,.08) 4px,transparent 4px,transparent 8px);
+  display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--text-dim)}
+
+/* best-3e ranglijst */
+.third-table-card{background:rgba(255,255,255,.86);border:1px solid rgba(24,62,118,.12);border-radius:14px;
+  overflow:hidden;box-shadow:0 18px 48px rgba(47,79,124,.10);max-width:520px;margin:0 auto 38px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.third-table-card .qgtitle{justify-content:flex-start}
+.ttable{width:100%;border-collapse:collapse;font-size:.8rem;color:var(--text)}
+.ttable th{font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-dim);
+  font-weight:800;padding:8px 6px;border-bottom:1px solid rgba(24,62,118,.10)}
+.ttable th.team{text-align:left;padding-left:14px}
+.ttable td{padding:9px 6px;text-align:center;border-bottom:1px solid rgba(24,62,118,.07)}
+.ttable tr:last-child td{border-bottom:none}
+.ttable td.team{text-align:left;padding-left:14px;font-weight:700}
+.ttable td.team .flag{width:22px;height:15px;margin-right:7px;vertical-align:middle;border-radius:2px}
+.ttable td.grp{color:var(--text-dim);font-weight:700}
+.ttable .pts{font-weight:800;color:#0b78ff}
+.ttable tr.in{background:linear-gradient(90deg,rgba(32,200,107,.12),transparent)}
+.ttable tr.in td:first-child{box-shadow:inset 3px 0 0 var(--pot1)}
+.ttable tr.cutline td{border-bottom:2px dashed rgba(255,90,90,.5)}
+.ttable .qd{font-size:.55rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  padding:2px 7px;border-radius:100px;background:rgba(32,200,107,.16);color:#0f8f4c}
+
+/* — knockout-boom (SVG-lijnen + absolute vakjes) — */
+/* — knockout-boom: breekt uit de smalle kolom zodat hij volledig past — */
+#panel-schema.active{ /* laat de boom de volle breedte gebruiken */
+  width:100vw;position:relative;left:50%;right:50%;margin-left:-50vw;margin-right:-50vw;
+  padding:0 clamp(10px,2vw,28px);
+}
+.bracket-scroll{overflow:hidden;padding:4px 0 22px;text-align:center}
+.bracket-fit{ /* meet beschikbare breedte; canvas wordt hierin geschaald */
+  width:100%;display:flex;justify-content:center;overflow:hidden}
+.bracket-canvas{position:relative;transform-origin:top center;margin:0 auto}
+/* schema-intro en kwalificatie blijven in een leesbare kolom gecentreerd */
+#panel-schema .schema-intro,
+#panel-schema .schema-section-title,
+#panel-schema .qual-grid,
+#panel-schema .third-table-card,
+#panel-schema .schema-divider,
+#panel-schema .bchamp{max-width:920px;margin-left:auto;margin-right:auto}
+#panel-schema .qual-grid{width:100%}
+
+/* kop-rij */
+.bheads{position:relative}
+.bhead{position:absolute;top:0;text-align:center;font-family:'Bebas Neue',sans-serif;
+  font-size:.9rem;letter-spacing:.05em;color:var(--text-dim)}
+.bhead.final{color:#0b78ff}
+
+/* verbindingslijnen */
+.blines{position:absolute;left:0;top:0;pointer-events:none}
+.blines path{fill:none;stroke:rgba(24,62,118,.30);stroke-width:2}
+
+/* vakjes */
+.babs{position:absolute}
+.btie-box{background:rgba(255,255,255,.94);border:1px solid rgba(24,62,118,.14);border-radius:10px;
+  overflow:hidden;box-shadow:0 8px 22px rgba(47,79,124,.12)}
+.babs.final .btie-box{border:2px solid rgba(11,120,255,.4);box-shadow:0 12px 30px rgba(11,120,255,.18)}
+.bteam{display:flex;align-items:center;gap:6px;padding:5px 7px;font-size:.72rem;font-weight:800;color:var(--text);height:27px}
+.bteam + .bteam{border-top:1px solid rgba(24,62,118,.08)}
+.bteam .flag{width:20px;height:14px;border-radius:2px;flex:none;box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.bteam .bn{flex:1 0 auto;white-space:nowrap;overflow:visible;text-align:left;letter-spacing:.03em}
+.bteam .bs{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--text-dim);flex:none;min-width:10px;text-align:right}
+.bteam.win{background:linear-gradient(90deg,rgba(32,200,107,.18),transparent)}
+.bteam.win .bn{color:#0f8f4c}
+.bteam.win .bs{color:var(--pot1)}
+.bteam.tbd{color:var(--text-dim);font-weight:600}
+.bteam.tbd .flag{background:repeating-linear-gradient(45deg,rgba(24,62,118,.09),rgba(24,62,118,.09) 4px,transparent 4px,transparent 8px)}
+
+/* kampioen-kaart */
+.bchamp{margin:18px auto 0;text-align:center;background:linear-gradient(135deg,#ffd54a,#ffb300);
+  border-radius:13px;padding:11px 20px;box-shadow:0 16px 40px rgba(255,179,0,.32);color:#3a2a00;width:max-content}
+.bchamp .bc-label{font-family:'Archivo',sans-serif;font-size:.58rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase}
+.bchamp .bc-name{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:.04em;display:flex;align-items:center;gap:9px;justify-content:center;margin-top:3px}
+.bchamp .flag{width:32px;height:21px;border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.25)}
+
+/* scheiding tussen boom en kwalificatie-overzicht */
+.schema-divider{height:1px;background:rgba(24,62,118,.14);margin:34px auto 30px;max-width:680px}
+
+@media(max-width:680px){
+  .qual-grid{grid-template-columns:1fr}
+}
+
+
 </style>
 </head>
 <body>
@@ -348,6 +466,7 @@ footer .powered .brand{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;let
   <div class="tabs">
     <button class="tab active" data-tab="klassement">Klassement</button>
     <button class="tab" data-tab="standen">Groepsstanden</button>
+    <button class="tab" data-tab="schema">Knockout</button>
   </div>
 
   <!-- ====================== TAB 1: KLASSEMENT ====================== -->
@@ -382,6 +501,11 @@ footer .powered .brand{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;let
   <!-- ====================== TAB 2: WEDSTRIJDEN & STANDEN ====================== -->
   <div class="panel" id="panel-standen">
     <div class="groups-grid" id="groupsGrid"></div>
+  </div>
+
+  <!-- ====================== TAB 3: SCHEMA / KWALIFICATIE ====================== -->
+  <div class="panel" id="panel-schema">
+    <div id="schemaContent"></div>
   </div>
 
   <footer>
@@ -447,6 +571,27 @@ const FLAG_CODE = { /* ISO 3166 landcodes voor flagcdn.com (echte vlagafbeelding
   "Congo DR":"cd",
   "Turkiye":"tr"
 };
+
+/* FIFA 3-letter landcodes (voor de compacte knockout-boom). */
+const CODE3 = {
+  "Belgium":"BEL","Argentina":"ARG","Uruguay":"URU","England":"ENG","Spain":"ESP",
+  "Algeria":"ALG","Croatia":"CRO","Ghana":"GHA","Iran":"IRN","Egypt":"EGY","Jordan":"JOR",
+  "Brazil":"BRA","United States":"USA","Mexico":"MEX","Portugal":"POR","Canada":"CAN",
+  "Germany":"GER","Netherlands":"NED","France":"FRA","Cape Verde":"CPV","Saudi Arabia":"KSA",
+  "Austria":"AUT","Morocco":"MAR","Tunisia":"TUN","Senegal":"SEN","Curacao":"CUW",
+  "Ivory Coast":"CIV","Bosnia-Herzegovina":"BIH","Switzerland":"SUI","Qatar":"QAT",
+  "Uzbekistan":"UZB","South Africa":"RSA","Scotland":"SCO","Australia":"AUS","Panama":"PAN",
+  "Norway":"NOR","Paraguay":"PAR","Haiti":"HAI","Ecuador":"ECU","Sweden":"SWE","Japan":"JPN",
+  "Iraq":"IRQ","New Zealand":"NZL","Czechia":"CZE","South Korea":"KOR","Colombia":"COL",
+  "Congo DR":"COD","Turkiye":"TUR"
+};
+function code3(name){
+  if(!name) return '';
+  if(CODE3[name]) return CODE3[name];
+  const lower=name.toLowerCase();
+  for(const k in CODE3){ if(k.toLowerCase()===lower) return CODE3[k]; }
+  return name.slice(0,3).toUpperCase();
+}
 
 /* Bouw een <img> met de vlag van flagcdn.com. Toont overal hetzelfde (geen emoji). */
 function flagImg(country){
@@ -628,6 +773,339 @@ function renderGroups(){
   grid.innerHTML=html;
 }
 
+/* ================================================================
+   SCHEMA / KWALIFICATIE-TAB
+   ----------------------------------------------------------------
+   Twee weergaven, automatisch gekozen:
+     (A) Zolang er nog geen knockout-wedstrijden bekend zijn (WC_KO leeg):
+         een kwalificatie-overzicht — per groep de huidige top 2 (+ 3e),
+         met "zeker"/"voorlopig", plus de ranglijst van de beste nummers 3.
+     (B) Zodra de live-bron knockout-wedstrijden levert (WC_KO gevuld):
+         de echte knockout-boom (laatste 32 -> finale) met landen + scores.
+   ================================================================ */
+
+/* groepstand berekenen (zelfde logica/tiebreakers als renderGroups) */
+function groupStandings(g){
+  const teams=WC_GROUPS[g];
+  const st={}; teams.forEach(t=>st[t]={team:t,P:0,W:0,D:0,L:0,GF:0,GA:0,Pts:0});
+  WC_MATCHES.filter(m=>m.group===g && played(m)).forEach(m=>{
+    const h=st[m.home],a=st[m.away]; if(!h||!a)return;
+    h.P++;a.P++;h.GF+=m.hs;h.GA+=m.as_;a.GF+=m.as_;a.GA+=m.hs;
+    if(m.hs>m.as_){h.W++;h.Pts+=3;a.L++;}
+    else if(m.hs<m.as_){a.W++;a.Pts+=3;h.L++;}
+    else{h.D++;a.D++;h.Pts++;a.Pts++;}
+  });
+  const ranked=teams.map(t=>st[t]).sort((x,y)=>
+    y.Pts-x.Pts || (y.GF-y.GA)-(x.GF-x.GA) || y.GF-x.GF || teams.indexOf(x.team)-teams.indexOf(y.team));
+  const complete=ranked.every(r=>r.P>=3);
+  return {ranked,complete};
+}
+
+/* (A) kwalificatie-overzicht */
+function renderQualOverview(){
+  const groups=Object.keys(WC_GROUPS);
+
+  // — per groep: top 2 + 3e —
+  let cards='';
+  for(const g of groups){
+    const {ranked,complete}=groupStandings(g);
+    const anyPlayed=ranked.some(r=>r.P>0);
+    const statusTxt = complete ? 'Afgewerkt' : (anyPlayed ? 'Loopt nog' : 'Nog niet gestart');
+
+    const slot=(r,pos)=>{
+      if(!r || r.P===0){
+        return `<div class="qslot empty-slot"><span class="qpos">${pos}</span>
+          <span class="qmark">?</span><span class="qname">nog te bepalen</span></div>`;
+      }
+      const cls = pos<=2 ? (complete?'secured':'provisional') : 'third';
+      let badge;
+      if(pos<=2) badge = complete ? 'Geplaatst' : 'Voorlopig';
+      else       badge = 'Beste-3e?';
+      return `<div class="qslot ${cls}">
+        <span class="qpos">${pos}</span>${flagImg(r.team)}
+        <span class="qname">${esc(r.team)}</span>
+        <span class="qbadge">${badge}</span></div>`;
+    };
+
+    cards+=`<div class="qgcard">
+      <div class="qgtitle">Groep ${g}<span class="gstatus">${statusTxt}</span></div>
+      ${slot(ranked[0],1)}${slot(ranked[1],2)}${slot(ranked[2],3)}
+    </div>`;
+  }
+
+  // — ranglijst beste nummers 3 (de 8 besten gaan door) —
+  const thirds=[];
+  for(const g of groups){
+    const {ranked}=groupStandings(g);
+    const t=ranked[2];
+    if(t && t.P>0) thirds.push({...t,group:g});
+  }
+  thirds.sort((x,y)=> y.Pts-x.Pts || (y.GF-y.GA)-(x.GF-x.GA) || y.GF-x.GF || x.group.localeCompare(y.group));
+
+  let thirdCard='';
+  if(thirds.length){
+    const rows=thirds.map((r,i)=>{
+      const gd=r.GF-r.GA, gds=gd>0?('+'+gd):(''+gd);
+      const inTop8 = i<8;
+      const cutline = i===7 ? 'cutline' : '';
+      return `<tr class="${inTop8?'in':''} ${cutline}">
+        <td>${i+1}</td>
+        <td class="team">${flagImg(r.team)}<span>${esc(r.team)}</span></td>
+        <td class="grp">${r.group}</td>
+        <td>${r.P}</td><td>${gds}</td><td class="pts">${r.Pts}</td>
+        <td>${inTop8?'<span class="qd">Door</span>':''}</td>
+      </tr>`;
+    }).join('');
+    thirdCard=`<div class="schema-section-title">Beste nummers 3</div>
+      <p class="schema-intro">De 8 beste nummers 3 (van de 12 groepen) gaan mee door naar de laatste 32.
+      De stippellijn toont de grens tussen plaatsen en uitschakelen.</p>
+      <div class="third-table-card">
+        <div class="qgtitle">Ranglijst nummers 3</div>
+        <table class="ttable"><thead><tr>
+          <th>#</th><th class="team">Land</th><th>Grp</th><th>G</th><th>+/-</th><th>Ptn</th><th></th>
+        </tr></thead><tbody>${rows}</tbody></table>
+      </div>`;
+  }
+
+  return `<p class="schema-intro">Overzicht van de landen die zich (al dan niet voorlopig) plaatsen voor
+    de knockoutfase. Zodra de loting van de laatste 32 bekend is, verschijnt hier automatisch het
+    volledige knockout-schema met de echte affiches en uitslagen.</p>
+    <div class="schema-section-title">Per groep</div>
+    <div class="qual-grid">${cards}</div>
+    ${thirdCard}`;
+}
+
+/* (B) echte knockout-boom uit WC_KO */
+const KO_ORDER=[
+  {key:"Round of 32", title:"1/16"},
+  {key:"Round of 16", title:"1/8"},
+  {key:"Quarter-finals", title:"1/4"},
+  {key:"Semi-finals", title:"1/2"},
+];
+const KO_SIZE={"Round of 32":16,"Round of 16":8,"Quarter-finals":4,"Semi-finals":2};
+
+/* één wedstrijdvakje (twee teams) */
+function bTie(m){
+  const row=(name,score,win)=>{
+    if(!name){
+      return `<div class="bteam tbd"><span class="flag"></span><span class="bn">n.t.b.</span><span class="bs"></span></div>`;
+    }
+    return `<div class="bteam ${win?'win':''}">${flagImg(name)}<span class="bn">${esc(name)}</span><span class="bs">${score!=null?score:''}</span></div>`;
+  };
+  if(!m){
+    return `<div class="btie"><div class="btie-box">${row(null)}${row(null)}</div></div>`;
+  }
+  const done=m.hs!=null && m.as_!=null;
+  return `<div class="btie"><div class="btie-box">
+    ${row(m.home,m.hs,done&&m.hs>m.as_)}
+    ${row(m.away,m.as_,done&&m.as_>m.hs)}
+  </div></div>`;
+}
+
+/* ================================================================
+   KNOCKOUT-BOOM — getekend als SVG-lijnen met HTML-vakjes erover.
+   Dit reproduceert exact de boomstructuur uit de voorbeeldafbeelding:
+   twee helften die naar een centrale finale toe groeien, met nette
+   verbindingslijnen tussen elke ronde. Werkt ook leeg (lege vakjes).
+   ================================================================ */
+
+/* HTML voor één vakje (twee teams) — absoluut geplaatst via wrapper-stijl */
+function tieBoxHTML(m){
+  const row=(name,score,win)=>{
+    if(!name) return `<div class="bteam tbd"><span class="flag"></span><span class="bn">—</span><span class="bs"></span></div>`;
+    return `<div class="bteam ${win?'win':''}">${flagImg(name)}<span class="bn" title="${esc(name)}">${esc(code3(name))}</span><span class="bs">${score!=null?score:''}</span></div>`;
+  };
+  if(!m) return `<div class="btie-box">${row(null)}${row(null)}</div>`;
+  const done=m.hs!=null && m.as_!=null;
+  return `<div class="btie-box">
+    ${row(m.home,m.hs,done&&m.hs>m.as_)}
+    ${row(m.away,m.as_,done&&m.as_>m.hs)}
+  </div>`;
+}
+
+function renderBracket(){
+  // ---- afmetingen ----
+  const BW=104, BH=54;          // vakje breedte/hoogte (compact: vlag + code)
+  const COL_GAP=30;             // horizontale lijnzone tussen rondes
+  const V0=16;                  // verticale ruimte tussen buitenste vakjes
+  const TOP=30;                 // ruimte boven voor kop-rij
+  const ROUNDS=["Round of 32","Round of 16","Quarter-finals","Semi-finals"];
+  const TITLES=["1/16","1/8","1/4","1/2"];
+  const N=ROUNDS[0]; // buitenste
+
+  // ties per ronde, aangevuld tot vaste grootte
+  const byRound={};
+  ROUNDS.concat(["Final"]).forEach(key=>{
+    const size=key==="Final"?1:KO_SIZE[key];
+    const got=WC_KO.filter(m=>m.round===key);
+    const arr=[]; for(let i=0;i<size;i++) arr.push(got[i]||null);
+    byRound[key]=arr;
+  });
+
+  const perHalf = KO_SIZE[ROUNDS[0]]/2;         // 8 buitenste ties per helft
+  const colCount = ROUNDS.length;               // 4 kolommen per helft
+  // verticale stap (pitch) van buitenste ronde
+  const pitch0 = BH + V0;
+  const halfHeight = perHalf*pitch0;            // hoogte van één helft
+  const centerY = TOP + halfHeight/2;
+
+  // x-positie per kolom-index in de LINKERhelft (0 = buitenste, links)
+  const colX = i => i*(BW+COL_GAP);
+  const leftWidth = colCount*(BW+COL_GAP) - COL_GAP; // tot rand laatste kolom
+  const finaleW = BW+COL_GAP;                   // ruimte voor finale in 't midden
+  const totalW = leftWidth*2 + finaleW + 2*COL_GAP;
+  const totalH = TOP + halfHeight + 20;
+
+  // y-positie van tie j in kolom i (binnen een helft).
+  // In kolom i zijn er perHalf/2^i ties; ze zitten gecentreerd t.o.v. hun kinderen.
+  function tieY(i,j){
+    const count = perHalf >> i;                 // aantal ties in kolom i
+    const pitch = halfHeight / count;           // gelijke verdeling
+    return TOP + pitch*j + pitch/2 - BH/2;
+  }
+
+  let boxes='';   // HTML vakjes
+  let lines='';   // SVG paden
+
+  const addBox=(x,y,html,cls='')=>{
+    boxes+=`<div class="babs ${cls}" style="left:${x}px;top:${y}px;width:${BW}px">${html}</div>`;
+  };
+  const seg=(x1,y1,x2,y2)=>{ lines+=`<path d="M${x1} ${y1} L${x2} ${y2}"/>`; };
+
+  // --- LINKERHELFT ---
+  for(let i=0;i<colCount;i++){
+    const count = perHalf >> i;
+    for(let j=0;j<count;j++){
+      const x=colX(i);
+      const y=tieY(i,j);
+      addBox(x,y,tieBoxHTML(byRound[ROUNDS[i]][j]));
+      const cy=y+BH/2;
+      // lijn van rechterrand naar volgende kolom (behalve laatste -> finale apart)
+      if(i<colCount-1){
+        const midX=x+BW+COL_GAP/2;
+        seg(x+BW,cy,midX,cy);                    // horizontaal stukje
+        // verticale koppeling: alleen vanaf even j (samen met j+1) tekenen we de bocht
+        if(j%2===0){
+          const cy2=tieY(i,j+1)+BH/2;
+          seg(midX,cy,midX,cy2);                 // verticale balk
+          const parentY=tieY(i+1,j/2)+BH/2;
+          seg(midX,parentY, colX(i+1), parentY); // naar ouder-vakje
+        }
+      }
+    }
+  }
+  // laatste linkerkolom (1/2) -> finale
+  {
+    const i=colCount-1;
+    const x=colX(i), y=tieY(i,0), cy=y+BH/2;
+    const fX=leftWidth+COL_GAP;                  // x van finale-vakje
+    const fY=centerY-BH/2, fcy=centerY;
+    seg(x+BW,cy, x+BW+COL_GAP/2,cy);
+    seg(x+BW+COL_GAP/2,cy, x+BW+COL_GAP/2,fcy);
+    seg(x+BW+COL_GAP/2,fcy, fX,fcy);
+  }
+
+  // --- RECHTERHELFT (gespiegeld) ---
+  const mirror = x => totalW - x - BW;           // spiegel x van een vakje
+  for(let i=0;i<colCount;i++){
+    const count = perHalf >> i;
+    for(let j=0;j<count;j++){
+      const x=mirror(colX(i));
+      const y=tieY(i,j);
+      // rechterhelft gebruikt de tweede helft van de ties-array
+      const tie=byRound[ROUNDS[i]][count+j];
+      addBox(x,y,tieBoxHTML(tie));
+      const cy=y+BH/2;
+      if(i<colCount-1){
+        const midX=x-COL_GAP/2;
+        seg(x,cy,midX,cy);
+        if(j%2===0){
+          const cy2=tieY(i,j+1)+BH/2;
+          seg(midX,cy,midX,cy2);
+          const parentY=tieY(i+1,j/2)+BH/2;
+          seg(midX,parentY, mirror(colX(i+1))+BW, parentY);
+        }
+      }
+    }
+  }
+  {
+    const i=colCount-1;
+    const x=mirror(colX(i)), cy=tieY(i,0)+BH/2;
+    const fXright=leftWidth+COL_GAP+BW;          // rechterrand finale
+    const midX=x-COL_GAP/2;
+    seg(x,cy, midX,cy);
+    seg(midX,cy, midX,centerY);
+    seg(midX,centerY, fXright,centerY);
+  }
+
+  // --- FINALE-vakje (midden) ---
+  const finalTie=byRound["Final"][0];
+  const fdone=finalTie && finalTie.hs!=null && finalTie.as_!=null;
+  addBox(leftWidth+COL_GAP, centerY-BH/2, tieBoxHTML(finalTie), 'final');
+
+  // --- kampioen ---
+  let champHTML='';
+  if(fdone && finalTie.hs!==finalTie.as_){
+    const champ=finalTie.hs>finalTie.as_?finalTie.home:finalTie.away;
+    champHTML=`<div class="bchamp"><div class="bc-label">🏆 Wereldkampioen</div>
+      <div class="bc-name">${flagImg(champ)}${esc(champ)}</div></div>`;
+  }
+
+  // --- kop-rij met ronde-namen ---
+  let heads='';
+  for(let i=0;i<colCount;i++){
+    heads+=`<div class="bhead" style="left:${colX(i)}px;width:${BW}px">${TITLES[i]}</div>`;
+    heads+=`<div class="bhead" style="left:${mirror(colX(i))}px;width:${BW}px">${TITLES[i]}</div>`;
+  }
+  heads+=`<div class="bhead final" style="left:${leftWidth+COL_GAP}px;width:${BW}px">Finale</div>`;
+
+  return `<p class="schema-intro">Knockout-boom van het WK 2026 — van de laatste 32 (1/16) tot de finale.
+    De vakjes vullen zich automatisch met de echte affiches en uitslagen zodra de loting bekend is;
+    de winnaar van elke wedstrijd kleurt groen.</p>
+    <div class="bracket-scroll">
+      <div class="bracket-fit">
+      <div class="bracket-canvas" data-w="${totalW}" data-h="${totalH}" style="width:${totalW}px;height:${totalH}px">
+        <div class="bheads" style="height:${TOP}px">${heads}</div>
+        <svg class="blines" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">${lines}</svg>
+        ${boxes}
+      </div>
+      </div>
+      ${champHTML}
+    </div>`;
+}
+
+/* Schaal de boom zodat hij volledig in de beschikbare breedte past
+   (geen zijwaarts scrollen). Wordt aangeroepen na render + bij resize. */
+function fitBracket(){
+  const fit=document.querySelector('.bracket-fit');
+  const canvas=document.querySelector('.bracket-canvas');
+  if(!fit||!canvas) return;
+  const natW=parseFloat(canvas.dataset.w);
+  const natH=parseFloat(canvas.dataset.h);
+  const avail=fit.clientWidth;
+  if(!avail||!natW) return;
+  const scale=Math.min(1, avail/natW);
+  canvas.style.transform = scale<1 ? `scale(${scale})` : 'none';
+  // reserveer de juiste hoogte zodat er geen overlap onder de boom ontstaat
+  fit.style.height = (natH*scale)+'px';
+}
+
+function renderSchema(){
+  const box=document.getElementById('schemaContent');
+  if(!box) return;
+  // De boom staat ALTIJD bovenaan (ook leeg, zoals het voorbeeld).
+  // Zolang de knockout nog niet begonnen is, tonen we eronder het
+  // kwalificatie-overzicht (geplaatste landen + beste-nummers-3).
+  let html = renderBracket();
+  if(!(WC_KO && WC_KO.length)){
+    html += `<div class="schema-divider"></div>` + renderQualOverview();
+  }
+  box.innerHTML = html;
+  // boom op de juiste schaal zetten (kan 0 zijn als tab nog verborgen is;
+  // dan herhaalt de tab-klik de meting).
+  requestAnimationFrame(fitBracket);
+}
+
 /* ---- tab-navigatie ---- */
 function initTabs(){
   document.querySelectorAll('.tab').forEach(btn=>{
@@ -636,8 +1114,12 @@ function initTabs(){
       document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+      // de boom kon niet correct gemeten worden zolang de tab verborgen was:
+      if(btn.dataset.tab==='schema') requestAnimationFrame(fitBracket);
     });
   });
+  // herschaal bij venster-resize / draaien van het toestel
+  window.addEventListener('resize', ()=>{ requestAnimationFrame(fitBracket); });
 }
 
 
@@ -862,7 +1344,7 @@ function applyLiveData(json) {
 
 async function loadLiveData(){
   const note=document.getElementById('liveSource');
-  if(MANUAL_OVERRIDE){ if(note) note.textContent="Bron: handmatig ingevuld"; renderLive(); renderGroups(); renderKlassement(); return; }
+  if(MANUAL_OVERRIDE){ if(note) note.textContent="Bron: handmatig ingevuld"; renderLive(); renderGroups(); renderKlassement(); renderSchema(); return; }
 
   const stamp = ()=> new Date().toLocaleString('nl-BE');
   let loaded = false;
@@ -895,7 +1377,7 @@ async function loadLiveData(){
   }
 
   // herteken alles met (mogelijk) bijgewerkte data
-  renderLive(); renderGroups(); renderKlassement();
+  renderLive(); renderGroups(); renderKlassement(); renderSchema();
 }
 
 
@@ -1253,6 +1735,7 @@ async function init(){
   renderLive();
   renderGroups();
   renderKlassement();         // toont meteen (groeps)stand op basis van WC_MATCHES
+  renderSchema();             // schema/kwalificatie-tab
   await loadLiveData();       // haalt live scores + knockout op, hertekent
 }
 init();
