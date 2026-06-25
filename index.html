@@ -1367,12 +1367,37 @@ const KO_RIGHT = [76, 78, 79, 80, 86, 88, 85, 87];
 // match-id -> matchnummer wordt via utcDate bepaald (zie hieronder)
 function matchNoFromDate(utc){
   if(!utc) return null;
+  // 1) exacte string-match
   for(const no in KO_CAL){ if(KO_CAL[no]===utc) return parseInt(no,10); }
+  // 2) tolerante match op tijdstip (zelfde moment, ongeacht format/seconden)
+  const t = Date.parse(utc);
+  if(!isNaN(t)){
+    for(const no in KO_CAL){
+      const tc = Date.parse(KO_CAL[no]);
+      if(!isNaN(tc) && Math.abs(tc - t) < 60*60*1000) return parseInt(no,10); // < 1u verschil
+    }
+  }
   return null;
 }
+// Terugval: feed-match-id -> matchnummer (football-data id's voor de R32).
+// Wordt gebruikt als de datum niet herkend wordt.
+const KO_ID = {
+  537417:73, 537415:74, 537418:75, 537423:76, 537416:77, 537424:78,
+  537425:79, 537426:80, 537421:81, 537422:82, 537430:83, 537419:84,
+  537420:85, 537427:86, 537428:87, 537429:88
+};
 
 function applyLiveData(json) {
-  if (!json || !Array.isArray(json.matches)) return false;
+  // Wees flexibel met de top-level structuur van de bron:
+  // football-data geeft {matches:[...]}, maar een proxy kan inpakken of
+  // de array rechtstreeks teruggeven.
+  let list = null;
+  if (Array.isArray(json)) list = json;
+  else if (json && Array.isArray(json.matches)) list = json.matches;
+  else if (json && json.data && Array.isArray(json.data.matches)) list = json.data.matches;
+  else if (json && json.response && Array.isArray(json.response.matches)) list = json.response.matches;
+  if (!Array.isArray(list) || !list.length) return false;
+  json = { matches: list };
 
   WC_KO = [];
 
@@ -1430,7 +1455,9 @@ function applyLiveData(json) {
     if (!round) return;
 
     // Bepaal het officiële matchnummer (voor R32) via de vaste FIFA-kalender.
-    const matchNo = matchNoFromDate(fm.utcDate);
+    // Eerst via datum; lukt dat niet, dan via het feed-match-id (terugval).
+    let matchNo = matchNoFromDate(fm.utcDate);
+    if (!matchNo && raw.id && KO_ID[raw.id]) matchNo = KO_ID[raw.id];
     const aff = (matchNo && KO_AFF[matchNo]) ? KO_AFF[matchNo] : null;
 
     // Knockout-wedstrijd. Een kant kan drie vormen hebben:
