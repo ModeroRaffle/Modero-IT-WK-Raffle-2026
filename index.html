@@ -804,6 +804,50 @@ function groupStandings(g){
   return {ranked,complete};
 }
 
+/* Bepaalt welke posities in een groep WISKUNDIG al vastliggen, ook als de
+   groep nog niet volledig is afgewerkt. Een team staat zeker op positie p als
+   geen enkel ander team het nog kan voorbijsteken of evenaren, zelfs in het
+   beste geval (alle resterende eigen wedstrijden gewonnen). We zijn bewust
+   streng: een positie telt alleen als "zeker" bij een voorsprong die niet meer
+   in te halen is, zodat tiebreakers (die nog kunnen kantelen) nooit roet in
+   het eten gooien.
+   Geeft terug: { winner: team|null, second: team|null }. */
+function clinchedPositions(g){
+  const teams=WC_GROUPS[g];
+  const st={}; teams.forEach(t=>st[t]={team:t,P:0,Pts:0,GF:0,GA:0});
+  WC_MATCHES.filter(m=>m.group===g && played(m)).forEach(m=>{
+    const h=st[m.home],a=st[m.away]; if(!h||!a)return;
+    h.P++;a.P++;h.GF+=m.hs;h.GA+=m.as_;a.GF+=m.as_;a.GA+=m.hs;
+    if(m.hs>m.as_) h.Pts+=3; else if(m.hs<m.as_) a.Pts+=3; else {h.Pts++;a.Pts++;}
+  });
+  const arr=teams.map(t=>st[t]);
+  const maxPts = r => r.Pts + 3*(3-r.P);          // best haalbare eindtotaal
+
+  const ranked=arr.slice().sort((x,y)=>
+    y.Pts-x.Pts || (y.GF-y.GA)-(x.GF-x.GA) || y.GF-x.GF || teams.indexOf(x.team)-teams.indexOf(y.team));
+
+  // positie p (0-indexed) is zeker voor 'cand' als hoogstens p andere teams
+  // cand nog kunnen EVENAREN of voorbijsteken (bij gelijke punten kan een
+  // tiebreaker kantelen, dus die tellen we mee als bedreiging).
+  const certainAt = (cand, pos) => {
+    let canReach=0;
+    for(const r of arr){
+      if(r.team===cand.team) continue;
+      if(maxPts(r) >= cand.Pts) canReach++;
+    }
+    return canReach <= pos;
+  };
+
+  let winner=null, second=null;
+  const c0=ranked[0];
+  if(c0 && c0.P>0 && certainAt(c0,0)) winner=c0.team;
+  if(winner){
+    const c1=ranked[1];
+    if(c1 && c1.P>0 && certainAt(c1,1)) second=c1.team;
+  }
+  return {winner, second};
+}
+
 /* ================================================================
    FALLBACK: bouw de laatste-32 op uit de groepsstanden.
    Wanneer de live-bron de knockout-affiches (nog) niet levert, leiden we
@@ -833,16 +877,22 @@ function resolveSlots(){
   const out={};
   const groups=Object.keys(WC_GROUPS);
 
-  // 1) winnaars en runners-up rechtstreeks uit de stand
+  // 1) winnaars en runners-up uit de stand.
+  //    - afgewerkte groep: posities liggen sowieso vast.
+  //    - lopende groep: vul enkel in wat WISKUNDIG al zeker is (clinched),
+  //      zodat bv. een groepswinnaar die niet meer in te halen is al verschijnt.
   const thirds=[];
   for(const g of groups){
     const {ranked,complete}=groupStandings(g);
-    // alleen invullen als de groep is afgewerkt (anders is de volgorde nog niet zeker)
     if(complete){
       if(ranked[0]) out["1"+g]=ranked[0].team;
       if(ranked[1]) out["2"+g]=ranked[1].team;
       if(ranked[2]) thirds.push({team:ranked[2].team, group:g,
         Pts:ranked[2].Pts, GD:ranked[2].GF-ranked[2].GA, GF:ranked[2].GF});
+    }else{
+      const clinch=clinchedPositions(g);
+      if(clinch.winner) out["1"+g]=clinch.winner;
+      if(clinch.second) out["2"+g]=clinch.second;
     }
   }
 
