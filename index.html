@@ -436,6 +436,9 @@ footer .powered .brand{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;let
 .bteam.win .bs{color:var(--pot1)}
 .bteam.tbd{color:var(--text-dim);font-weight:600}
 .bteam.tbd .flag{background:repeating-linear-gradient(45deg,rgba(24,62,118,.09),rgba(24,62,118,.09) 4px,transparent 4px,transparent 8px)}
+.bteam.ph{color:var(--text-dim);font-weight:700;font-style:italic}
+.bteam.ph .bn{font-size:.68rem;letter-spacing:0}
+.bteam.ph .flag{background:repeating-linear-gradient(45deg,rgba(11,120,255,.10),rgba(11,120,255,.10) 4px,transparent 4px,transparent 8px)}
 
 /* kampioen-kaart */
 .bchamp{margin:18px auto 0;text-align:center;background:linear-gradient(135deg,#ffd54a,#ffb300);
@@ -910,16 +913,42 @@ function bTie(m){
    ================================================================ */
 
 /* HTML voor één vakje (twee teams) — absoluut geplaatst via wrapper-stijl */
+/* Kort een plaatshouder-tekst in tot iets dat in een smal vakje past.
+   Voorbeelden: "Winner Group A"->"W A", "Runner-up B"->"2 B",
+   "1A"->"1A", "3rd C/D/E/F"->"3 C/D/…". Onbekende vormen worden
+   gewoon afgekapt (volledige tekst blijft in de tooltip). */
+function shortPlaceholder(s){
+  if(!s) return '?';
+  let t=String(s).trim();
+  t=t.replace(/^winner(s)?\s+(of\s+)?group\s*/i,'W ')
+     .replace(/^winner(s)?\s+(of\s+)?/i,'W ')
+     .replace(/^runner[- ]?up(s)?\s+(of\s+)?group\s*/i,'2 ')
+     .replace(/^runner[- ]?up(s)?\s+(of\s+)?/i,'2 ')
+     .replace(/^group\s*/i,'')
+     .replace(/(\d)(st|nd|rd|th)\b/gi,'$1')   // 1st->1, 3rd->3
+     .replace(/\bplace\b/gi,'')
+     .replace(/\s+/g,' ').trim();
+  if(t.length>9) t=t.slice(0,8)+'…';
+  return t;
+}
+
 function tieBoxHTML(m){
-  const row=(name,score,win)=>{
-    if(!name) return `<div class="bteam tbd"><span class="flag"></span><span class="bn">—</span><span class="bs"></span></div>`;
-    return `<div class="bteam ${win?'win':''}">${flagImg(name)}<span class="bn" title="${esc(name)}">${esc(code3(name))}</span><span class="bs">${score!=null?score:''}</span></div>`;
+  // home/away kunnen een echt land zijn (-> vlag+code), een plaatshouder
+  // (-> grijze tekst), of leeg (-> "—").
+  const row=(name,ph,score,win)=>{
+    if(name){
+      return `<div class="bteam ${win?'win':''}">${flagImg(name)}<span class="bn" title="${esc(name)}">${esc(code3(name))}</span><span class="bs">${score!=null?score:''}</span></div>`;
+    }
+    if(ph){
+      return `<div class="bteam ph"><span class="flag"></span><span class="bn" title="${esc(ph)}">${esc(shortPlaceholder(ph))}</span><span class="bs"></span></div>`;
+    }
+    return `<div class="bteam tbd"><span class="flag"></span><span class="bn">—</span><span class="bs"></span></div>`;
   };
-  if(!m) return `<div class="btie-box">${row(null)}${row(null)}</div>`;
+  if(!m) return `<div class="btie-box">${row(null,null)}${row(null,null)}</div>`;
   const done=m.hs!=null && m.as_!=null;
   return `<div class="btie-box">
-    ${row(m.home,m.hs,done&&m.hs>m.as_)}
-    ${row(m.away,m.as_,done&&m.as_>m.hs)}
+    ${row(m.home,m.homePh,m.hs,done&&m.hs>m.as_)}
+    ${row(m.away,m.awayPh,m.as_,done&&m.as_>m.hs)}
   </div>`;
 }
 
@@ -1097,7 +1126,13 @@ function renderSchema(){
   // Zolang de knockout nog niet begonnen is, tonen we eronder het
   // kwalificatie-overzicht (geplaatste landen + beste-nummers-3).
   let html = renderBracket();
-  if(!(WC_KO && WC_KO.length)){
+  // Toon het kwalificatie-overzicht eronder zolang de boom nog niet volledig
+  // met echte landen ingevuld is (d.w.z. zolang er nog plaatshouders of lege
+  // vakjes in de laatste 32 staan). Zodra alles ingevuld is, valt het weg.
+  const r32 = WC_KO.filter(m=>m.round==="Round of 32");
+  const r32Compleet = r32.length===KO_SIZE["Round of 32"] &&
+    r32.every(m=>m.home && m.away);
+  if(!r32Compleet){
     html += `<div class="schema-divider"></div>` + renderQualOverview();
   }
   box.innerHTML = html;
@@ -1328,12 +1363,19 @@ function applyLiveData(json) {
 
     const round = KO_ROUNDS[raw.stage] || fm.round;
     if (!round) return;
-    if (isPlaceholder(fm.home) || isPlaceholder(fm.away)) return;
+
+    // Optie B: gooi wedstrijden met plaatshouders NIET weg.
+    // Een echte landnaam (komt voor in POT) tonen we als land; een plaatshouder
+    // (bv. "1A", "2B", "3 C/E/F", "Winner Group A") tonen we als grijze tekst.
+    const homePh = isPlaceholder(fm.home) || !(fm.home in POT);
+    const awayPh = isPlaceholder(fm.away) || !(fm.away in POT);
 
     WC_KO.push({
       round,
-      home: fm.home,
-      away: fm.away,
+      home: homePh ? null : fm.home,
+      away: awayPh ? null : fm.away,
+      homePh: homePh ? String(fm.home || "").trim() : null,
+      awayPh: awayPh ? String(fm.away || "").trim() : null,
       hs: fm.hs,
       as_: fm.as_,
     });
