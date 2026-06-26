@@ -1167,7 +1167,7 @@ function renderQualOverview(){
       const cls = pos<=2 ? (isSecured?'secured':'provisional') : (safe3?'secured':'third');
       let badge;
       if(pos<=2) badge = isSecured ? 'Geplaatst' : 'Voorlopig';
-      else       badge = safe3 ? 'Beste-3e ✓' : 'Beste-3e?';
+      else       badge = safe3 ? 'Beste 3e ✓' : 'Beste 3e?';
       return `<div class="qslot ${cls}">
         <span class="qpos">${pos}</span>${flagImg(r.team)}
         <span class="qname">${esc(r.team)}</span>
@@ -1208,7 +1208,7 @@ function renderQualOverview(){
     }).join('');
     thirdCard=`<div class="schema-section-title">Beste nummers 3</div>
       <p class="schema-intro">De 8 beste nummers 3 (van de 12 groepen) gaan mee door naar de laatste 32.
-      De stippellijn toont de grens tussen plaatsen en uitschakelen.</p>
+      De stippellijn toont de grens tussen geplaatst en uitgeschakeld.</p>
       <div class="third-table-card">
         <table class="ttable"><thead><tr>
           <th>#</th><th class="team">Land</th><th>Grp</th><th>G</th><th>+/-</th><th>Ptn</th><th></th>
@@ -1485,7 +1485,7 @@ function renderBracket(){
   heads+=`<div class="bhead final" style="left:${leftWidth+COL_GAP}px;width:${BW}px">Finale</div>`;
 
   return `<p class="schema-intro">Knockout-schema van het WK 2026 — van de laatste 32 (1/16) tot de finale.
-    De vakjes vullen zich automatisch met de echte affiches en uitslagen zodra de loting bekend is;
+    De vakjes worden automatisch ingevuld met de echte affiches en uitslagen zodra de loting bekend is;
     de winnaar van elke wedstrijd kleurt groen.</p>
     <div class="bracket-scroll">
       <div class="bracket-fit">
