@@ -1355,14 +1355,56 @@ function renderBracket(){
         home: homeTeam, away: awayTeam,
         homePh: homeTeam ? null : aff[0],
         awayPh: awayTeam ? null : aff[1],
-        hs, as_
+        hs, as_,
+        _fedHome: !!(fed && fed.home),               // kwam dit land uit de feed?
+        _fedAway: !!(fed && fed.away)
       };
     });
-    // feed-records zonder matchNo (datum/id niet herkend) op vrije plekken
-    const leftover = r32.filter(m=>!m.matchNo && (m.home||m.away));
+
+    // Globale dedup: geen enkel land mag twee keer in de laatste 32 staan.
+    // Feed-plaatsingen (op herkend matchnummer) hebben voorrang op afgeleide
+    // (standen-)plaatsingen. Komt een land twee keer voor, dan houden we de
+    // feed-plaatsing en maken de afgeleide weer een plaatshouder.
+    {
+      const seen = {};                                // team -> {idx, side, fromFeed}
+      const sides = ["home","away"];
+      // eerst alle feed-plaatsingen registreren (die winnen)
+      placed.forEach((p,idx)=>sides.forEach(side=>{
+        const team=p[side]; if(!team) return;
+        const fromFeed = side==="home" ? p._fedHome : p._fedAway;
+        if(fromFeed && !seen[team]) seen[team]={idx,side};
+      }));
+      // daarna afgeleide plaatsingen: verwijder als het land al (door feed) staat
+      placed.forEach((p,idx)=>sides.forEach(side=>{
+        const team=p[side]; if(!team) return;
+        const fromFeed = side==="home" ? p._fedHome : p._fedAway;
+        if(fromFeed) return;
+        if(seen[team]){
+          // duplicaat: zet dit slot terug naar de plaatshouder-code
+          const aff=KO_AFF[p.matchNo]||[null,null];
+          p[side]=null;
+          if(side==="home") p.homePh=aff[0]; else p.awayPh=aff[1];
+        }else{
+          seen[team]={idx,side};
+        }
+      }));
+    }
+
+    // feed-records zonder matchNo (datum/id niet herkend) op vrije plekken,
+    // maar NOOIT een land dat al elders in de boom staat (anders dubbel).
+    const inBracket = new Set();
+    placed.forEach(p=>{ if(p.home) inBracket.add(p.home); if(p.away) inBracket.add(p.away); });
+    const leftover = r32.filter(m=>!m.matchNo && (m.home||m.away)
+      && !(m.home && inBracket.has(m.home)) && !(m.away && inBracket.has(m.away)));
     let li=0;
     for(let i=0;i<placed.length && li<leftover.length;i++){
-      if(!placed[i].home && !placed[i].away) placed[i]=leftover[li++];
+      if(!placed[i].home && !placed[i].away){
+        const lo=leftover[li++];
+        if((lo.home && inBracket.has(lo.home)) || (lo.away && inBracket.has(lo.away))){ i--; continue; }
+        placed[i]=lo;
+        if(lo.home) inBracket.add(lo.home);
+        if(lo.away) inBracket.add(lo.away);
+      }
     }
     byRound["Round of 32"]=placed;
   }
