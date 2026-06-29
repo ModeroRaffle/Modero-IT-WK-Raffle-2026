@@ -1341,13 +1341,24 @@ function renderBracket(){
   const TITLES=["1/16","1/8","1/4","1/2"];
   const N=ROUNDS[0]; // buitenste
 
-  // ties per ronde, aangevuld tot vaste grootte
+  // ties per ronde, aangevuld tot vaste grootte.
+  // BELANGRIJK: alleen de LAATSTE 32 wordt uit de feed op bracketpositie gezet
+  // (verderop, via het matchnummer). De rondes daarna (R16/QF/SF/finale) worden
+  // NIET met rauwe feed-records op chronologische indices gevuld — dat gaf eerder
+  // duplicaten (een land stond zowel op zijn feed-index als op zijn doorgestroomde
+  // positie). We starten die rondes leeg en bouwen ze volledig op via doorstroming.
+  // De feed-records voor R16+ bewaren we apart om er enkel SCORES uit te halen,
+  // gematcht op de twee landen (zie de doorstroom-sectie hieronder).
   const byRound={};
   ROUNDS.concat(["Final"]).forEach(key=>{
     const size=key==="Final"?1:KO_SIZE[key];
-    const got=WC_KO.filter(m=>m.round===key);
-    const arr=[]; for(let i=0;i<size;i++) arr.push(got[i]||null);
+    const arr=[]; for(let i=0;i<size;i++) arr.push(null);
     byRound[key]=arr;
+  });
+  // feed-records per ronde voor latere score-matching (op landenpaar)
+  const feedByRound={};
+  ROUNDS.slice(1).concat(["Final"]).forEach(key=>{
+    feedByRound[key]=WC_KO.filter(m=>m.round===key && (m.home||m.away));
   });
 
   // --- Laatste 32 op VASTE bracketpositie zetten ---
@@ -1450,12 +1461,26 @@ function renderBracket(){
         if(side==="home") p.homePh=aff[0]; else p.awayPh=aff[1];
       };
 
+      // is dit een derde-plaats-slot (affiche-code begint met '3')?
+      const isThirdSlot = (matchNo, side) => {
+        const aff=KO_AFF[matchNo]||[null,null];
+        const code = side==="home" ? aff[0] : aff[1];
+        return !!(code && code[0]==='3');
+      };
+
       Object.keys(occur).forEach(team=>{
         const list=occur[team];
         if(list.length<2) return;                      // geen duplicaat
-        // kies de te behouden plaatsing: 1) affiche-code matcht de standen,
-        // anders 2) een feed-plaatsing, anders 3) de eerste.
-        let keep = list.find(o=>codeMatches(team,placed[o.idx].matchNo,o.side));
+        // Keuze-volgorde voor de te behouden plaatsing:
+        //  1) een FEED-plaatsing op een DERDE-plaats-slot — dit is de officiële
+        //     FIFA-toewijzing van de 8 derdes (gezaghebbender dan onze eigen
+        //     greedy resolveSlots-benadering, die dezelfde groep aan een ánder
+        //     3-slot kan toewijzen en zo de feed-derde zou wegduwen);
+        //  2) affiche-code die de groepsstanden matcht (voor 1X/2X);
+        //  3) eender welke feed-plaatsing;
+        //  4) anders de eerste.
+        let keep = list.find(o=>o.fed && isThirdSlot(placed[o.idx].matchNo,o.side));
+        if(!keep) keep = list.find(o=>codeMatches(team,placed[o.idx].matchNo,o.side));
         if(!keep) keep = list.find(o=>o.fed);
         if(!keep) keep = list[0];
         list.forEach(o=>{ if(o!==keep) clearSlot(o.idx,o.side); });
@@ -1496,42 +1521,45 @@ function renderBracket(){
       const w = tie.hs>tie.as_ ? tie.home : tie.away;
       return w || null;                                   // alleen echte landen
     };
+    // Zoek in de feed-records van deze ronde een uitslag die hoort bij het
+    // doorgestroomde landenpaar (home/away in willekeurige volgorde). Geeft de
+    // score terug in de volgorde van (home,away) zoals doorgestroomd.
+    const scoreFor = (roundKey, home, away) => {
+      const recs = feedByRound[roundKey] || [];
+      for(const f of recs){
+        if(f.hs==null || f.as_==null) continue;           // geen uitslag
+        if(home && away && f.home===home && f.away===away) return [f.hs, f.as_];
+        if(home && away && f.home===away && f.away===home) return [f.as_, f.hs]; // omgekeerd
+        // één kant bekend (de andere nog niet doorgestroomd): tolereer match op één team
+        if(home && !away && (f.home===home || f.away===home))
+          return f.home===home ? [f.hs,f.as_] : [f.as_,f.hs];
+        if(away && !home && (f.home===away || f.away===away))
+          return f.home===away ? [f.as_,f.hs] : [f.hs,f.as_];
+      }
+      return [null,null];
+    };
     for(let r=1;r<ROUNDS.length;r++){
       const prev = byRound[ROUNDS[r-1]];
       const cur  = byRound[ROUNDS[r]];
       for(let k=0;k<cur.length;k++){
-        const fed = cur[k];                               // bestaand feed-record
         const wHome = winnerOf(prev[2*k]);
         const wAway = winnerOf(prev[2*k+1]);
-        // feed-record met echte teams behouden (kan echte uitslag bevatten);
-        // anders een record opbouwen uit de doorgestroomde winnaars.
-        const fedHasTeams = fed && (fed.home || fed.away);
-        if(fedHasTeams){
-          // vul ontbrekende kant aan met de doorgestroomde winnaar
-          if(!fed.home && wHome) fed.home = wHome;
-          if(!fed.away && wAway) fed.away = wAway;
-          cur[k]=fed;
-        }else{
-          cur[k] = {
-            round: ROUNDS[r], matchNo: fed?fed.matchNo:null,
-            home: wHome, away: wAway,
-            homePh: wHome?null:(fed?fed.homePh:null),
-            awayPh: wAway?null:(fed?fed.awayPh:null),
-            hs: fed?fed.hs:null, as_: fed?fed.as_:null
-          };
-        }
+        const [hs, as_] = scoreFor(ROUNDS[r], wHome, wAway);
+        cur[k] = {
+          round: ROUNDS[r], matchNo: null,
+          home: wHome, away: wAway,
+          homePh: null, awayPh: null,
+          hs, as_
+        };
       }
     }
     // finale: winnaars van de twee halve finales
     const sf = byRound["Semi-finals"];
-    const fin = byRound["Final"][0];
     const fHome = winnerOf(sf[0]), fAway = winnerOf(sf[1]);
-    if(fin && (fin.home||fin.away)){
-      if(!fin.home && fHome) fin.home=fHome;
-      if(!fin.away && fAway) fin.away=fAway;
-    }else if(fHome||fAway){
+    if(fHome || fAway){
+      const [hs, as_] = scoreFor("Final", fHome, fAway);
       byRound["Final"][0] = {round:"Final", matchNo:null, home:fHome, away:fAway,
-        homePh:null, awayPh:null, hs:null, as_:null};
+        homePh:null, awayPh:null, hs, as_};
     }
   }
 
