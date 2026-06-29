@@ -1791,105 +1791,43 @@ function renderBracket(){
       return null;
     };
 
+    // KERNPRINCIPE: de boom wordt opgebouwd uit (1) de OFFICIËLE matchcodes
+    // (KO_AFF: welk groepsslot thuis/uit speelt) en (2) de EIGEN groepsstanden
+    // + FIFA Annex C (resolveSlots: welk land elk slot inneemt). Dat is de enige
+    // bron van waarheid voor WIE waar staat. De feed levert ALLEEN de SCORE.
+    //
+    // Waarom niet de feed voor de affiches? De live-bron labelt het derde-plaats-
+    // slot soms met een runner-up (bv. Oostenrijk=2J op M85 i.p.v. Algerije=3J,
+    // Egypte=2G op M87 i.p.v. Ghana=3L). Door uitsluitend op de standen + Annex C
+    // te bouwen is zo'n foute affiche onmogelijk, en blijven er geen gaten over
+    // zolang de groepen (en dus de 8 beste derdes) bekend zijn.
+    //
+    // Een slot dat (nog) niet uit de standen op te lossen is — bv. omdat niet alle
+    // groepen af zijn — valt terug op het echte land uit de feed indien aanwezig,
+    // en anders op de plaatshouder-code ("3EFGIJ", "2G", …).
+    const usedTeams = new Set();   // voorkomt elk dubbel land in de laatste 32
     const placed = order.map(no=>{
       const aff = KO_AFF[no] || [null,null];
-      const fed = byNo[no];                          // feed-record (kan leeg zijn)
-      // Wie speelt waar hangt af van het slottype:
-      //  • winnaar/runner-up (codes "1X"/"2X"): de GROEPSSTANDEN zijn leidend.
-      //    Die liggen wiskundig vast (bv. Zwitserland = 1B) en mogen niet door
-      //    een voorlopige of foutgeplaatste feed-affiche overschreven worden.
-      //  • beste derde (codes "3..."): de FEED is leidend, want de officiële
-      //    toewijzing van de 8 derdes aan de slots (FIFA Annex C, 495 gevallen)
-      //    is gezaghebbender dan onze eigen benadering.
-      // De SCORE komt altijd van de feed zodra de wedstrijd gespeeld is.
-      const pick = (code, isAway) => {
-        const derived = teamForSlot(code, no, isAway);
-        const fedTeam = fed ? (isAway ? fed.away : fed.home) : null;
-        if(code && code[0]==='3') return fedTeam || derived || null;  // derde: feed eerst
-        return derived || fedTeam || null;                           // 1X/2X: standen eerst
-      };
-      const homeTeam = pick(aff[0], false);
-      const awayTeam = pick(aff[1], true);
-      const hs = fed ? fed.hs : null;
-      const as_ = fed ? fed.as_ : null;
+      const fed = byNo[no];                          // feed-record (enkel voor score)
+      let homeTeam = teamForSlot(aff[0], no, false); // standen/Annex C leidend
+      let awayTeam = teamForSlot(aff[1], no, true);
+      const fedHome = fed && fed.home;
+      const fedAway = fed && fed.away;
+      // Terugval op echt feed-land alleen als de standen het slot niet konden
+      // invullen (en dat land nog nergens anders in de boom staat).
+      if(!homeTeam && fedHome && !usedTeams.has(fedHome)) homeTeam = fedHome;
+      if(!awayTeam && fedAway && !usedTeams.has(fedAway)) awayTeam = fedAway;
+      if(homeTeam) usedTeams.add(homeTeam);
+      if(awayTeam) usedTeams.add(awayTeam);
       return {
         round:"Round of 32", matchNo:no,
         home: homeTeam, away: awayTeam,
         homePh: homeTeam ? null : aff[0],
         awayPh: awayTeam ? null : aff[1],
-        hs, as_,
-        _fedHome: !!(fed && fed.home),               // kwam dit land uit de feed?
-        _fedAway: !!(fed && fed.away)
+        hs: fed ? fed.hs : null,
+        as_: fed ? fed.as_ : null
       };
     });
-
-    // Globale dedup: geen enkel land mag twee keer in de laatste 32 staan.
-    // Duplicaten kunnen ontstaan doordat (a) een land zowel uit de feed als uit
-    // de standen-fallback komt, of (b) de feed-data zelf hetzelfde land in twee
-    // wedstrijden zet (bv. zowel als 1B in M85 als — foutief — als 2G in M88).
-    // We kiezen per land de JUISTE plaatsing met behulp van de groepsstanden:
-    // de plaatsing waarvan de officiële affiche-code overeenkomt met de
-    // werkelijke positie van dat land (uit 'resolved') is correct; de andere
-    // wordt teruggezet naar de plaatshouder-code.
-    {
-      // land -> set van slotcodes die het volgens de standen hoort in te nemen
-      const slotForTeam = {};
-      Object.keys(resolved).forEach(code=>{
-        const team=resolved[code]; if(!team) return;
-        (slotForTeam[team] = slotForTeam[team] || new Set()).add(code);
-      });
-      // hoort 'team' op deze positie (matchNo + kant)? Vergelijk affiche-code.
-      const codeMatches = (team, matchNo, side) => {
-        const aff=KO_AFF[matchNo]||[null,null];
-        const code = side==="home" ? aff[0] : aff[1];
-        if(!code) return false;
-        const set = slotForTeam[team];
-        if(!set) return false;
-        if(set.has(code)) return true;                 // exact (bv. "1B")
-        // derde-plaats: 'resolved' gebruikt sleutel "3@<matchNo>"
-        if(code[0]==='3' && set.has("3@"+matchNo)) return true;
-        return false;
-      };
-
-      const sides=["home","away"];
-      const occur={};                                  // team -> [{idx,side,fed}]
-      placed.forEach((p,idx)=>sides.forEach(side=>{
-        const team=p[side]; if(!team) return;
-        const fed = side==="home" ? p._fedHome : p._fedAway;
-        (occur[team]=occur[team]||[]).push({idx,side,fed});
-      }));
-
-      const clearSlot=(idx,side)=>{
-        const p=placed[idx]; const aff=KO_AFF[p.matchNo]||[null,null];
-        p[side]=null;
-        if(side==="home") p.homePh=aff[0]; else p.awayPh=aff[1];
-      };
-
-      // is dit een derde-plaats-slot (affiche-code begint met '3')?
-      const isThirdSlot = (matchNo, side) => {
-        const aff=KO_AFF[matchNo]||[null,null];
-        const code = side==="home" ? aff[0] : aff[1];
-        return !!(code && code[0]==='3');
-      };
-
-      Object.keys(occur).forEach(team=>{
-        const list=occur[team];
-        if(list.length<2) return;                      // geen duplicaat
-        // Keuze-volgorde voor de te behouden plaatsing:
-        //  1) een FEED-plaatsing op een DERDE-plaats-slot — dit is de officiële
-        //     FIFA-toewijzing van de 8 derdes (gezaghebbender dan onze eigen
-        //     greedy resolveSlots-benadering, die dezelfde groep aan een ánder
-        //     3-slot kan toewijzen en zo de feed-derde zou wegduwen);
-        //  2) affiche-code die de groepsstanden matcht (voor 1X/2X);
-        //  3) eender welke feed-plaatsing;
-        //  4) anders de eerste.
-        let keep = list.find(o=>o.fed && isThirdSlot(placed[o.idx].matchNo,o.side));
-        if(!keep) keep = list.find(o=>codeMatches(team,placed[o.idx].matchNo,o.side));
-        if(!keep) keep = list.find(o=>o.fed);
-        if(!keep) keep = list[0];
-        list.forEach(o=>{ if(o!==keep) clearSlot(o.idx,o.side); });
-      });
-    }
 
     // feed-records zonder matchNo (datum/id niet herkend) op vrije plekken,
     // maar NOOIT een land dat al elders in de boom staat (anders dubbel).
