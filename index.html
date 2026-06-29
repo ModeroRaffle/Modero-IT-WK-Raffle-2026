@@ -717,29 +717,63 @@ function fmtDate(m){
 function fmtTime(m){ return m.time; }
 
 function renderLive(){
-  const all=[...WC_MATCHES];
-  // laatste 3 gespeelde (op datum aflopend)
-  const done=all.filter(played).sort((a,b)=>matchDateTime(b)-matchDateTime(a)).slice(0,3);
-  // aankomende 3 (niet gespeeld, op datum oplopend)
-  const next=all.filter(m=>!played(m)).sort((a,b)=>matchDateTime(a)-matchDateTime(b)).slice(0,3);
+  // ronde-labels voor knockout-wedstrijden (i.p.v. "Groep X")
+  const KO_LABEL = {
+    "Round of 32":"1/16 finale", "Round of 16":"1/8 finale",
+    "Quarter-finals":"kwartfinale", "Semi-finals":"halve finale",
+    "Third place":"troostfinale", "Final":"finale"
+  };
+  // bouw een uniforme lijst: groepswedstrijden + knockout-wedstrijden
+  const groupItems = WC_MATCHES.map(m=>({
+    home:m.home, away:m.away, hs:m.hs, as_:m.as_,
+    when: matchDateTime(m), label:"Groep "+m.group,
+    dstr: fmtDate(m), tstr: fmtTime(m)
+  }));
+  const koItems = (WC_KO||[]).filter(k=>k.home && k.away).map(k=>{
+    const utc = k.matchNo ? KO_CAL[k.matchNo] : null;
+    const when = utc ? new Date(utc) : null;
+    return {
+      home:k.home, away:k.away, hs:k.hs, as_:k.as_,
+      when, label: KO_LABEL[k.round] || k.round || "knockout",
+      dstr: when ? fmtDateD(when) : "", tstr: when ? fmtTimeD(when) : ""
+    };
+  });
+  const all = groupItems.concat(koItems);
+  const isPlayed = x => x.hs!=null && x.as_!=null;
+
+  // laatste 3 gespeelde (op datum aflopend); knockout heeft mogelijk geen 'when'
+  const done = all.filter(isPlayed)
+    .sort((a,b)=>(b.when?b.when:0)-(a.when?a.when:0)).slice(0,3);
+  // aankomende 3 (niet gespeeld, met bekende datum, op datum oplopend)
+  const next = all.filter(x=>!isPlayed(x) && x.when)
+    .sort((a,b)=>a.when-b.when).slice(0,3);
 
   const lastBox=document.getElementById('lastMatches');
   if(!done.length){ lastBox.innerHTML='<div class="live-empty">Nog geen gespeelde wedstrijden.</div>'; }
-  else lastBox.innerHTML=done.map(m=>`
+  else lastBox.innerHTML=done.map(x=>`
     <div class="match">
-      <div class="side"> ${flagImg(m.home)}<span class="nm">${esc(m.home)}</span></div>
-      <div class="mid"><div class="score">${m.hs}-${m.as_}</div><div class="grp">Groep ${m.group}</div></div>
-      <div class="side away"><span class="nm">${esc(m.away)}</span>${flagImg(m.away)}</div>
+      <div class="side"> ${flagImg(x.home)}<span class="nm">${esc(x.home)}</span></div>
+      <div class="mid"><div class="score">${x.hs}-${x.as_}</div><div class="grp">${esc(x.label)}</div></div>
+      <div class="side away"><span class="nm">${esc(x.away)}</span>${flagImg(x.away)}</div>
     </div>`).join('');
 
   const nextBox=document.getElementById('nextMatches');
   if(!next.length){ nextBox.innerHTML='<div class="live-empty">Geen geplande wedstrijden.</div>'; }
-  else nextBox.innerHTML=next.map(m=>`
+  else nextBox.innerHTML=next.map(x=>`
     <div class="match">
-      <div class="side">${flagImg(m.home)}<span class="nm">${esc(m.home)}</span></div>
-      <div class="mid"><div class="kickoff"><span class="d">${fmtDate(m)}</span>${fmtTime(m)}</div><div class="grp">Groep ${m.group}</div></div>
-      <div class="side away"><span class="nm">${esc(m.away)}</span>${flagImg(m.away)}</div>
+      <div class="side">${flagImg(x.home)}<span class="nm">${esc(x.home)}</span></div>
+      <div class="mid"><div class="kickoff"><span class="d">${x.dstr}</span>${x.tstr}</div><div class="grp">${esc(x.label)}</div></div>
+      <div class="side away"><span class="nm">${esc(x.away)}</span>${flagImg(x.away)}</div>
     </div>`).join('');
+}
+// datum/tijd-helpers die direct op een Date werken (voor knockout met KO_CAL)
+function fmtDateD(d){
+  const days=["zo","ma","di","wo","do","vr","za"];
+  const months=["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
+  return days[d.getDay()]+" "+d.getDate()+" "+months[d.getMonth()];
+}
+function fmtTimeD(d){
+  return String(d.getHours()).padStart(2,'0')+":"+String(d.getMinutes()).padStart(2,'0');
 }
 
 /* ---- groepsstanden berekenen uit WC_MATCHES ---- */
@@ -1447,6 +1481,60 @@ function renderBracket(){
     byRound["Round of 32"]=placed;
   }
 
+  // --- Winnaars laten doorstromen naar de volgende rondes ---
+  // De feed levert lang niet altijd de R16/QF/SF-affiches; en als ze komen,
+  // staan ze in chronologische (niet-bracket) volgorde. We bouwen daarom elke
+  // ronde deterministisch op uit de winnaars van de vorige ronde, volgens de
+  // vaste bracketkoppeling (buurparen 2k en 2k+1 -> ouder k). Een feed-record
+  // met ECHTE teams/score op die plek heeft voorrang (echte uitslag); anders
+  // vullen we de winnaar in die wiskundig doorstroomt.
+  {
+    const winnerOf = (tie) => {
+      if(!tie) return null;
+      if(tie.hs==null || tie.as_==null) return null;     // nog niet gespeeld
+      if(tie.hs===tie.as_) return null;                   // gelijk (penalty's onbekend)
+      const w = tie.hs>tie.as_ ? tie.home : tie.away;
+      return w || null;                                   // alleen echte landen
+    };
+    for(let r=1;r<ROUNDS.length;r++){
+      const prev = byRound[ROUNDS[r-1]];
+      const cur  = byRound[ROUNDS[r]];
+      for(let k=0;k<cur.length;k++){
+        const fed = cur[k];                               // bestaand feed-record
+        const wHome = winnerOf(prev[2*k]);
+        const wAway = winnerOf(prev[2*k+1]);
+        // feed-record met echte teams behouden (kan echte uitslag bevatten);
+        // anders een record opbouwen uit de doorgestroomde winnaars.
+        const fedHasTeams = fed && (fed.home || fed.away);
+        if(fedHasTeams){
+          // vul ontbrekende kant aan met de doorgestroomde winnaar
+          if(!fed.home && wHome) fed.home = wHome;
+          if(!fed.away && wAway) fed.away = wAway;
+          cur[k]=fed;
+        }else{
+          cur[k] = {
+            round: ROUNDS[r], matchNo: fed?fed.matchNo:null,
+            home: wHome, away: wAway,
+            homePh: wHome?null:(fed?fed.homePh:null),
+            awayPh: wAway?null:(fed?fed.awayPh:null),
+            hs: fed?fed.hs:null, as_: fed?fed.as_:null
+          };
+        }
+      }
+    }
+    // finale: winnaars van de twee halve finales
+    const sf = byRound["Semi-finals"];
+    const fin = byRound["Final"][0];
+    const fHome = winnerOf(sf[0]), fAway = winnerOf(sf[1]);
+    if(fin && (fin.home||fin.away)){
+      if(!fin.home && fHome) fin.home=fHome;
+      if(!fin.away && fAway) fin.away=fAway;
+    }else if(fHome||fAway){
+      byRound["Final"][0] = {round:"Final", matchNo:null, home:fHome, away:fAway,
+        homePh:null, awayPh:null, hs:null, as_:null};
+    }
+  }
+
   const perHalf = KO_SIZE[ROUNDS[0]]/2;         // 8 buitenste ties per helft
   const colCount = ROUNDS.length;               // 4 kolommen per helft
   // verticale stap (pitch) van buitenste ronde
@@ -2141,13 +2229,35 @@ function computeCountryPoints(){
   }
 
   // ---- Knockout-progressie ----
-  // Een land dat voorkomt in een ronde, heeft die ronde "bereikt".
-  const reached={"Round of 16":3,"Quarter-finals":5,"Semi-finals":8,"Final":12};
-  Object.keys(reached).forEach(rd=>{
-    const pts=reached[rd];
+  // Een land "bereikt" een ronde als het in een wedstrijd van die ronde voorkomt,
+  // OF als het de vorige ronde won (doorstroming). Zo blijft de score consistent
+  // met de boom, ook als de feed de volgende-ronde-affiches nog niet levert.
+  // Punten per BEREIKTE ronde (cumulatief toegekend per ronde):
+  const reachPts = {"Round of 16":3, "Quarter-finals":5, "Semi-finals":8, "Final":12};
+  // 1) directe aanwezigheid in een ronde-record uit de feed
+  const reachedSet = {"Round of 16":new Set(), "Quarter-finals":new Set(), "Semi-finals":new Set(), "Final":new Set()};
+  Object.keys(reachedSet).forEach(rd=>{
     WC_KO.filter(m=>m.round===rd).forEach(m=>{
-      [m.home,m.away].forEach(t=>{ if(t&&res[t]) res[t].raw += pts; });
+      if(m.home) reachedSet[rd].add(m.home);
+      if(m.away) reachedSet[rd].add(m.away);
     });
+  });
+  // 2) doorstroming: winnaar van een ronde bereikt de volgende ronde
+  const winnerOfKO = (m)=>{
+    if(!m || m.hs==null || m.as_==null || m.hs===m.as_) return null;
+    return m.hs>m.as_ ? m.home : m.away;
+  };
+  const nextOf = {"Round of 32":"Round of 16","Round of 16":"Quarter-finals",
+                  "Quarter-finals":"Semi-finals","Semi-finals":"Final"};
+  Object.keys(nextOf).forEach(rd=>{
+    WC_KO.filter(m=>m.round===rd).forEach(m=>{
+      const w=winnerOfKO(m);
+      if(w) reachedSet[nextOf[rd]].add(w);
+    });
+  });
+  // punten toekennen per bereikte ronde
+  Object.keys(reachPts).forEach(rd=>{
+    reachedSet[rd].forEach(t=>{ if(res[t]) res[t].raw += reachPts[rd]; });
   });
   // wereldkampioen +15 = winnaar van de finale
   WC_KO.filter(m=>m.round==="Final" && m.hs!==null && m.as_!==null).forEach(m=>{
