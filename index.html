@@ -1894,22 +1894,44 @@ function normalizeFootballDataMatch(fm) {
   let homeScore, awayScore, penHome=null, penAway=null;
 
   if (isShootout) {
-    // effectieve score: regularTime (+ extraTime indien aanwezig)
+    // 1) effectieve score: stand na 90' (regularTime) + eventuele verlenging.
     const rh = num(regularTime.home), ra = num(regularTime.away);
     const eh = num(extraTime.home),   ea = num(extraTime.away);
+    const fh = num(fullTime.home),    fa = num(fullTime.away);
     if (rh !== null && ra !== null) {
       homeScore = rh + (eh || 0);
       awayScore = ra + (ea || 0);
+    } else if (fh !== null && fa !== null) {
+      // geen regularTime: benader effectief via fullTime min strafschoppen
+      const ph0 = num(penalties.home), pa0 = num(penalties.away);
+      homeScore = (ph0 !== null) ? fh - ph0 : fh;
+      awayScore = (pa0 !== null) ? fa - pa0 : fa;
     } else {
-      // geen regularTime in de feed: leid effectieve score af door de
-      // strafschoppen van de opgetelde fullTime af te trekken.
-      const fh = num(fullTime.home), fa = num(fullTime.away);
-      const ph = num(penalties.home), pa = num(penalties.away);
-      homeScore = (fh !== null && ph !== null) ? fh - ph : (fh !== null ? fh : null);
-      awayScore = (fa !== null && pa !== null) ? fa - pa : (fa !== null ? fa : null);
+      homeScore = null; awayScore = null;
     }
-    penHome = num(penalties.home);
-    penAway = num(penalties.away);
+
+    // 2) strafschoppen. football-data laat het penalties-veld soms achterlopen
+    //    (bv. blijven hangen op een gelijke stand) terwijl fullTime al de echte
+    //    einduitslag bevat. De aftreksom fullTime - effectief is dan betrouwbaarder.
+    //    Regel: gebruik het penalties-veld, maar val terug op de aftreksom wanneer
+    //    die WEL een winnaar oplevert en het penalties-veld NIET (of ontbreekt).
+    const pField_h = num(penalties.home), pField_a = num(penalties.away);
+    let derived_h = null, derived_a = null;
+    if (fh !== null && fa !== null && homeScore !== null && awayScore !== null) {
+      derived_h = fh - homeScore;
+      derived_a = fa - awayScore;
+    }
+    const fieldHasWinner   = (pField_h !== null && pField_a !== null && pField_h !== pField_a);
+    const derivedHasWinner = (derived_h !== null && derived_a !== null && derived_h !== derived_a
+                              && derived_h >= 0 && derived_a >= 0);
+    if (fieldHasWinner) {
+      penHome = pField_h; penAway = pField_a;
+    } else if (derivedHasWinner) {
+      penHome = derived_h; penAway = derived_a;
+    } else {
+      // geen van beide geeft een winnaar: toon het penalties-veld indien aanwezig
+      penHome = pField_h; penAway = pField_a;
+    }
   } else {
     homeScore =
       num(fullTime.home) !== null ? fullTime.home :
