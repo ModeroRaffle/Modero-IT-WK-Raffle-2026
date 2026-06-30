@@ -298,6 +298,7 @@ footer .powered .brand{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;let
   justify-content:center;
 }
 .match .score{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;color:#0b78ff;line-height:1}
+.match .pens{font-size:.62rem;font-weight:700;color:#8a43ff;line-height:1.1;margin-top:1px}
 .match .kickoff{font-size:.72rem;color:var(--text-dim);line-height:1.25}
 .match .kickoff .d{display:block;font-weight:800;color:var(--text)}
 .match .grp{
@@ -432,6 +433,7 @@ footer .powered .brand{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;let
 .bteam .flag{width:20px;height:14px;border-radius:2px;flex:none;box-shadow:0 1px 2px rgba(0,0,0,.18)}
 .bteam .bn{flex:1 0 auto;white-space:nowrap;overflow:visible;text-align:left;letter-spacing:.03em}
 .bteam .bs{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--text-dim);flex:none;min-width:10px;text-align:right}
+.bteam .bs .bpen{font-family:'Inter',sans-serif;font-size:.6rem;font-weight:700;color:#8a43ff;margin-left:2px;vertical-align:top}
 .bteam.win{background:linear-gradient(90deg,rgba(32,200,107,.18),transparent)}
 .bteam.win .bn{color:#0f8f4c}
 .bteam.win .bs{color:var(--pot1)}
@@ -725,7 +727,7 @@ function renderLive(){
   };
   // bouw een uniforme lijst: groepswedstrijden + knockout-wedstrijden
   const groupItems = WC_MATCHES.map(m=>({
-    home:m.home, away:m.away, hs:m.hs, as_:m.as_,
+    home:m.home, away:m.away, hs:m.hs, as_:m.as_, phs:null, pas:null,
     when: matchDateTime(m), label:"Groep "+m.group,
     dstr: fmtDate(m), tstr: fmtTime(m)
   }));
@@ -733,7 +735,7 @@ function renderLive(){
     const utc = k.matchNo ? KO_CAL[k.matchNo] : null;
     const when = utc ? new Date(utc) : null;
     return {
-      home:k.home, away:k.away, hs:k.hs, as_:k.as_,
+      home:k.home, away:k.away, hs:k.hs, as_:k.as_, phs:k.phs, pas:k.pas,
       when, label: KO_LABEL[k.round] || k.round || "knockout",
       dstr: when ? fmtDateD(when) : "", tstr: when ? fmtTimeD(when) : ""
     };
@@ -748,12 +750,16 @@ function renderLive(){
   const next = all.filter(x=>!isPlayed(x) && x.when)
     .sort((a,b)=>a.when-b.when).slice(0,3);
 
+  // strafschoppenregel onder de score (alleen bij een shootout)
+  const penLine = x => (x.phs!=null && x.pas!=null)
+    ? `<div class="pens">pen. ${x.phs}-${x.pas}</div>` : '';
+
   const lastBox=document.getElementById('lastMatches');
   if(!done.length){ lastBox.innerHTML='<div class="live-empty">Nog geen gespeelde wedstrijden.</div>'; }
   else lastBox.innerHTML=done.map(x=>`
     <div class="match">
       <div class="side"> ${flagImg(x.home)}<span class="nm">${esc(x.home)}</span></div>
-      <div class="mid"><div class="score">${x.hs}-${x.as_}</div><div class="grp">${esc(x.label)}</div></div>
+      <div class="mid"><div class="score">${x.hs}-${x.as_}</div>${penLine(x)}<div class="grp">${esc(x.label)}</div></div>
       <div class="side away"><span class="nm">${esc(x.away)}</span>${flagImg(x.away)}</div>
     </div>`).join('');
 
@@ -1116,398 +1122,6 @@ const THIRD_SLOTS = {  // matchNo -> {pos:'home'|'away', allow:[groepen]}
   85:{pos:'away', allow:['E','F','G','I','J']},
   87:{pos:'away', allow:['D','E','I','J','L']}
 };
-
-/* Officiële FIFA Annex C-toewijzing van de 8 beste nummers 3 aan de winnaar-
-   slots. Sleutel = de 8 groepen (gesorteerd, A..L) waarvan de derde doorgaat;
-   waarde = { matchNo: groepLetter } voor de derde-plaats in die wedstrijd.
-   Kolomvolgorde in de FIFA-tabel: 1A,1B,1D,1E,1G,1I,1K,1L = M79,M85,M81,M74,
-   M82,M77,M87,M80. Dit is de gezaghebbende bron; alleen als een (zeldzame)
-   combinatie hier ontbreekt, valt resolveSlots terug op de greedy-oplossing. */
-const ANNEX_C = {
-  "ABCFGIKL":{74:"C",77:"F",79:"I",80:"K",81:"B",82:"A",85:"G",87:"L"},
-  "ABCFGJKL":{74:"F",77:"G",79:"C",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABCFHIJK":{74:"C",77:"F",79:"H",80:"K",81:"B",82:"A",85:"J",87:"I"},
-  "ABCFHIJL":{74:"C",77:"F",79:"H",80:"I",81:"B",82:"A",85:"J",87:"L"},
-  "ABCFHIKL":{74:"C",77:"F",79:"H",80:"K",81:"B",82:"A",85:"I",87:"L"},
-  "ABCFHJKL":{74:"C",77:"F",79:"H",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABCFIJKL":{74:"C",77:"F",79:"I",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABCGHIJK":{74:"C",77:"G",79:"H",80:"K",81:"B",82:"A",85:"J",87:"I"},
-  "ABCGHIJL":{74:"C",77:"G",79:"H",80:"I",81:"B",82:"A",85:"J",87:"L"},
-  "ABCGHIKL":{74:"C",77:"H",79:"I",80:"K",81:"B",82:"A",85:"G",87:"L"},
-  "ABCGHJKL":{74:"C",77:"G",79:"H",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABCGIJKL":{74:"C",77:"G",79:"I",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABCHIJKL":{74:"C",77:"H",79:"I",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABDEFGHI":{74:"D",77:"F",79:"H",80:"I",81:"B",82:"A",85:"G",87:"E"},
-  "ABDEFGHJ":{74:"D",77:"F",79:"H",80:"J",81:"B",82:"A",85:"G",87:"E"},
-  "ABDEFGHK":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"A",85:"G",87:"E"},
-  "ABDEFGHL":{74:"D",77:"F",79:"H",80:"E",81:"B",82:"A",85:"G",87:"L"},
-  "ABDEFGIJ":{74:"D",77:"F",79:"E",80:"J",81:"B",82:"A",85:"G",87:"I"},
-  "ABDEFGIK":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"A",85:"G",87:"I"},
-  "ABDEFGIL":{74:"D",77:"F",79:"E",80:"I",81:"B",82:"A",85:"G",87:"L"},
-  "ABDEFGJK":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"A",85:"G",87:"J"},
-  "ABDEFGJL":{74:"D",77:"F",79:"E",80:"J",81:"B",82:"A",85:"G",87:"L"},
-  "ABDEFGKL":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"A",85:"G",87:"L"},
-  "ABDEFHIJ":{74:"D",77:"F",79:"H",80:"I",81:"B",82:"A",85:"J",87:"E"},
-  "ABDEFHIK":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"A",85:"E",87:"I"},
-  "ABDEFHIL":{74:"D",77:"F",79:"H",80:"I",81:"B",82:"A",85:"E",87:"L"},
-  "ABDEFHJK":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"A",85:"J",87:"E"},
-  "ABDEFHJL":{74:"D",77:"F",79:"H",80:"E",81:"B",82:"A",85:"J",87:"L"},
-  "ABDEFHKL":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"A",85:"E",87:"L"},
-  "ABDEFIJK":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"A",85:"J",87:"I"},
-  "ABDEFIJL":{74:"D",77:"F",79:"E",80:"I",81:"B",82:"A",85:"J",87:"L"},
-  "ABDEFIKL":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"A",85:"I",87:"L"},
-  "ABDEFJKL":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABDEGHIJ":{74:"D",77:"G",79:"H",80:"I",81:"B",82:"A",85:"J",87:"E"},
-  "ABDEGHIK":{74:"D",77:"H",79:"E",80:"K",81:"B",82:"A",85:"G",87:"I"},
-  "ABDEGHIL":{74:"D",77:"H",79:"E",80:"I",81:"B",82:"A",85:"G",87:"L"},
-  "ABDEGHJK":{74:"D",77:"G",79:"H",80:"K",81:"B",82:"A",85:"J",87:"E"},
-  "ABDEGHJL":{74:"D",77:"G",79:"H",80:"E",81:"B",82:"A",85:"J",87:"L"},
-  "ABDEGHKL":{74:"D",77:"H",79:"E",80:"K",81:"B",82:"A",85:"G",87:"L"},
-  "ABDEGIJK":{74:"D",77:"G",79:"E",80:"K",81:"B",82:"A",85:"J",87:"I"},
-  "ABDEGIJL":{74:"D",77:"G",79:"E",80:"I",81:"B",82:"A",85:"J",87:"L"},
-  "ABDEGIKL":{74:"A",77:"D",79:"E",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "ABDEGJKL":{74:"D",77:"G",79:"E",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABDEHIJK":{74:"D",77:"H",79:"E",80:"K",81:"B",82:"A",85:"J",87:"I"},
-  "ABDEHIJL":{74:"D",77:"H",79:"E",80:"I",81:"B",82:"A",85:"J",87:"L"},
-  "ABDEHIKL":{74:"D",77:"H",79:"E",80:"K",81:"B",82:"A",85:"I",87:"L"},
-  "ABDEHJKL":{74:"D",77:"H",79:"E",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABDEIJKL":{74:"A",77:"D",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "ABDFGHIJ":{74:"D",77:"F",79:"H",80:"J",81:"B",82:"A",85:"G",87:"I"},
-  "ABDFGHIK":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"A",85:"G",87:"I"},
-  "ABDFGHIL":{74:"D",77:"F",79:"H",80:"I",81:"B",82:"A",85:"G",87:"L"},
-  "ABDFGHJK":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"A",85:"G",87:"J"},
-  "ABDFGHJL":{74:"D",77:"F",79:"H",80:"J",81:"B",82:"A",85:"G",87:"L"},
-  "ABDFGHKL":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"A",85:"G",87:"L"},
-  "ABDFGIJK":{74:"D",77:"G",79:"F",80:"K",81:"B",82:"A",85:"J",87:"I"},
-  "ABDFGIJL":{74:"D",77:"G",79:"F",80:"I",81:"B",82:"A",85:"J",87:"L"},
-  "ABDFGIKL":{74:"D",77:"F",79:"I",80:"K",81:"B",82:"A",85:"G",87:"L"},
-  "ABDFGJKL":{74:"D",77:"G",79:"F",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABDFHIJK":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"A",85:"J",87:"I"},
-  "ABDFHIJL":{74:"D",77:"F",79:"H",80:"I",81:"B",82:"A",85:"J",87:"L"},
-  "ABDFHIKL":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"A",85:"I",87:"L"},
-  "ABDFHJKL":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABDFIJKL":{74:"D",77:"F",79:"I",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABDGHIJK":{74:"D",77:"G",79:"H",80:"K",81:"B",82:"A",85:"J",87:"I"},
-  "ABDGHIJL":{74:"D",77:"G",79:"H",80:"I",81:"B",82:"A",85:"J",87:"L"},
-  "ABDGHIKL":{74:"D",77:"H",79:"I",80:"K",81:"B",82:"A",85:"G",87:"L"},
-  "ABDGHJKL":{74:"D",77:"G",79:"H",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABDGIJKL":{74:"D",77:"G",79:"I",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABDHIJKL":{74:"D",77:"H",79:"I",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABEFGHIJ":{74:"F",77:"G",79:"H",80:"I",81:"B",82:"A",85:"J",87:"E"},
-  "ABEFGHIK":{74:"F",77:"H",79:"E",80:"K",81:"B",82:"A",85:"G",87:"I"},
-  "ABEFGHIL":{74:"F",77:"H",79:"E",80:"I",81:"B",82:"A",85:"G",87:"L"},
-  "ABEFGHJK":{74:"F",77:"G",79:"H",80:"K",81:"B",82:"A",85:"J",87:"E"},
-  "ABEFGHJL":{74:"F",77:"G",79:"H",80:"E",81:"B",82:"A",85:"J",87:"L"},
-  "ABEFGHKL":{74:"F",77:"H",79:"E",80:"K",81:"B",82:"A",85:"G",87:"L"},
-  "ABEFGIJK":{74:"F",77:"G",79:"E",80:"K",81:"B",82:"A",85:"J",87:"I"},
-  "ABEFGIJL":{74:"F",77:"G",79:"E",80:"I",81:"B",82:"A",85:"J",87:"L"},
-  "ABEFGIKL":{74:"A",77:"F",79:"E",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "ABEFGJKL":{74:"F",77:"G",79:"E",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABEFHIJK":{74:"F",77:"H",79:"E",80:"K",81:"B",82:"A",85:"J",87:"I"},
-  "ABEFHIJL":{74:"F",77:"H",79:"E",80:"I",81:"B",82:"A",85:"J",87:"L"},
-  "ABEFHIKL":{74:"F",77:"H",79:"E",80:"K",81:"B",82:"A",85:"I",87:"L"},
-  "ABEFHJKL":{74:"F",77:"H",79:"E",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABEFIJKL":{74:"A",77:"F",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "ABEGHIJK":{74:"A",77:"G",79:"E",80:"K",81:"B",82:"H",85:"J",87:"I"},
-  "ABEGHIJL":{74:"A",77:"G",79:"E",80:"I",81:"B",82:"H",85:"J",87:"L"},
-  "ABEGHIKL":{74:"A",77:"H",79:"E",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "ABEGHJKL":{74:"A",77:"G",79:"E",80:"K",81:"B",82:"H",85:"J",87:"L"},
-  "ABEGIJKL":{74:"A",77:"G",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "ABEHIJKL":{74:"A",77:"H",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "ABFGHIJK":{74:"F",77:"G",79:"H",80:"K",81:"B",82:"A",85:"J",87:"I"},
-  "ABFGHIJL":{74:"F",77:"G",79:"H",80:"I",81:"B",82:"A",85:"J",87:"L"},
-  "ABFGHIKL":{74:"A",77:"F",79:"H",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "ABFGHJKL":{74:"F",77:"G",79:"H",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABFGIJKL":{74:"F",77:"G",79:"I",80:"K",81:"B",82:"A",85:"J",87:"L"},
-  "ABFHIJKL":{74:"A",77:"F",79:"H",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "ABGHIJKL":{74:"A",77:"G",79:"H",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "ACDEFGHI":{74:"C",77:"F",79:"H",80:"I",81:"E",82:"A",85:"G",87:"D"},
-  "ACDEFGHJ":{74:"C",77:"F",79:"H",80:"E",81:"J",82:"A",85:"G",87:"D"},
-  "ACDEFGHK":{74:"C",77:"F",79:"H",80:"K",81:"E",82:"A",85:"G",87:"D"},
-  "ACDEFGHL":{74:"C",77:"D",79:"H",80:"E",81:"F",82:"A",85:"G",87:"L"},
-  "ACDEFGIJ":{74:"D",77:"F",79:"C",80:"I",81:"J",82:"A",85:"G",87:"E"},
-  "ACDEFGIK":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"A",85:"G",87:"I"},
-  "ACDEFGIL":{74:"D",77:"F",79:"C",80:"I",81:"E",82:"A",85:"G",87:"L"},
-  "ACDEFGJK":{74:"D",77:"F",79:"C",80:"K",81:"J",82:"A",85:"G",87:"E"},
-  "ACDEFGJL":{74:"D",77:"F",79:"C",80:"E",81:"J",82:"A",85:"G",87:"L"},
-  "ACDEFGKL":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"A",85:"G",87:"L"},
-  "ACDEFHIJ":{74:"C",77:"F",79:"H",80:"I",81:"E",82:"A",85:"J",87:"D"},
-  "ACDEFHIK":{74:"C",77:"D",79:"H",80:"K",81:"F",82:"A",85:"E",87:"I"},
-  "ACDEFHIL":{74:"C",77:"D",79:"H",80:"I",81:"F",82:"A",85:"E",87:"L"},
-  "ACDEFHJK":{74:"C",77:"F",79:"H",80:"K",81:"E",82:"A",85:"J",87:"D"},
-  "ACDEFHJL":{74:"C",77:"D",79:"H",80:"E",81:"F",82:"A",85:"J",87:"L"},
-  "ACDEFHKL":{74:"C",77:"D",79:"H",80:"K",81:"F",82:"A",85:"E",87:"L"},
-  "ACDEFIJK":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"A",85:"J",87:"I"},
-  "ACDEFIJL":{74:"D",77:"F",79:"C",80:"I",81:"E",82:"A",85:"J",87:"L"},
-  "ACDEFIKL":{74:"D",77:"F",79:"C",80:"K",81:"I",82:"A",85:"E",87:"L"},
-  "ACDEFJKL":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"A",85:"J",87:"L"},
-  "ACDEGHIJ":{74:"C",77:"D",79:"H",80:"I",81:"J",82:"A",85:"G",87:"E"},
-  "ACDEGHIK":{74:"C",77:"D",79:"H",80:"K",81:"E",82:"A",85:"G",87:"I"},
-  "ACDEGHIL":{74:"C",77:"D",79:"H",80:"I",81:"E",82:"A",85:"G",87:"L"},
-  "ACDEGHJK":{74:"C",77:"D",79:"H",80:"K",81:"J",82:"A",85:"G",87:"E"},
-  "ACDEGHJL":{74:"C",77:"D",79:"H",80:"E",81:"J",82:"A",85:"G",87:"L"},
-  "ACDEGHKL":{74:"C",77:"D",79:"H",80:"K",81:"E",82:"A",85:"G",87:"L"},
-  "ACDEGIJK":{74:"C",77:"D",79:"E",80:"K",81:"J",82:"A",85:"G",87:"I"},
-  "ACDEGIJL":{74:"C",77:"D",79:"E",80:"I",81:"J",82:"A",85:"G",87:"L"},
-  "ACDEGIKL":{74:"C",77:"D",79:"E",80:"K",81:"I",82:"A",85:"G",87:"L"},
-  "ACDEGJKL":{74:"C",77:"D",79:"E",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ACDEHIJK":{74:"C",77:"D",79:"H",80:"K",81:"E",82:"A",85:"J",87:"I"},
-  "ACDEHIJL":{74:"C",77:"D",79:"H",80:"I",81:"E",82:"A",85:"J",87:"L"},
-  "ACDEHIKL":{74:"C",77:"D",79:"H",80:"K",81:"I",82:"A",85:"E",87:"L"},
-  "ACDEHJKL":{74:"C",77:"D",79:"H",80:"K",81:"E",82:"A",85:"J",87:"L"},
-  "ACDEIJKL":{74:"C",77:"D",79:"E",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ACDFGHIJ":{74:"C",77:"F",79:"H",80:"I",81:"J",82:"A",85:"G",87:"D"},
-  "ACDFGHIK":{74:"C",77:"D",79:"H",80:"K",81:"F",82:"A",85:"G",87:"I"},
-  "ACDFGHIL":{74:"C",77:"D",79:"H",80:"I",81:"F",82:"A",85:"G",87:"L"},
-  "ACDFGHJK":{74:"C",77:"F",79:"H",80:"K",81:"J",82:"A",85:"G",87:"D"},
-  "ACDFGHJL":{74:"D",77:"F",79:"C",80:"H",81:"J",82:"A",85:"G",87:"L"},
-  "ACDFGHKL":{74:"C",77:"D",79:"H",80:"K",81:"F",82:"A",85:"G",87:"L"},
-  "ACDFGIJK":{74:"D",77:"F",79:"C",80:"K",81:"J",82:"A",85:"G",87:"I"},
-  "ACDFGIJL":{74:"D",77:"F",79:"C",80:"I",81:"J",82:"A",85:"G",87:"L"},
-  "ACDFGIKL":{74:"D",77:"F",79:"C",80:"K",81:"I",82:"A",85:"G",87:"L"},
-  "ACDFGJKL":{74:"D",77:"F",79:"C",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ACDFHIJK":{74:"C",77:"D",79:"H",80:"K",81:"F",82:"A",85:"J",87:"I"},
-  "ACDFHIJL":{74:"C",77:"D",79:"H",80:"I",81:"F",82:"A",85:"J",87:"L"},
-  "ACDFHIKL":{74:"C",77:"D",79:"H",80:"K",81:"I",82:"A",85:"F",87:"L"},
-  "ACDFHJKL":{74:"C",77:"D",79:"H",80:"K",81:"F",82:"A",85:"J",87:"L"},
-  "ACDFIJKL":{74:"D",77:"F",79:"C",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ACDGHIJK":{74:"C",77:"D",79:"H",80:"K",81:"J",82:"A",85:"G",87:"I"},
-  "ACDGHIJL":{74:"C",77:"D",79:"H",80:"I",81:"J",82:"A",85:"G",87:"L"},
-  "ACDGHIKL":{74:"C",77:"D",79:"H",80:"K",81:"I",82:"A",85:"G",87:"L"},
-  "ACDGHJKL":{74:"C",77:"D",79:"H",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ACDGIJKL":{74:"C",77:"D",79:"I",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ACDHIJKL":{74:"C",77:"D",79:"H",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ACEFGHIJ":{74:"C",77:"F",79:"H",80:"I",81:"J",82:"A",85:"G",87:"E"},
-  "ACEFGHIK":{74:"C",77:"F",79:"H",80:"K",81:"E",82:"A",85:"G",87:"I"},
-  "ACEFGHIL":{74:"C",77:"F",79:"H",80:"I",81:"E",82:"A",85:"G",87:"L"},
-  "ACEFGHJK":{74:"C",77:"F",79:"H",80:"K",81:"J",82:"A",85:"G",87:"E"},
-  "ACEFGHJL":{74:"C",77:"F",79:"H",80:"E",81:"J",82:"A",85:"G",87:"L"},
-  "ACEFGHKL":{74:"C",77:"F",79:"H",80:"K",81:"E",82:"A",85:"G",87:"L"},
-  "ACEFGIJK":{74:"C",77:"F",79:"E",80:"K",81:"J",82:"A",85:"G",87:"I"},
-  "ACEFGIJL":{74:"C",77:"F",79:"E",80:"I",81:"J",82:"A",85:"G",87:"L"},
-  "ACEFGIKL":{74:"C",77:"F",79:"E",80:"K",81:"I",82:"A",85:"G",87:"L"},
-  "ACEFGJKL":{74:"C",77:"F",79:"E",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ACEFHIJK":{74:"C",77:"F",79:"H",80:"K",81:"E",82:"A",85:"J",87:"I"},
-  "ACEFHIJL":{74:"C",77:"F",79:"H",80:"I",81:"E",82:"A",85:"J",87:"L"},
-  "ACEFHIKL":{74:"C",77:"F",79:"H",80:"K",81:"I",82:"A",85:"E",87:"L"},
-  "ACEFHJKL":{74:"C",77:"F",79:"H",80:"K",81:"E",82:"A",85:"J",87:"L"},
-  "ACEFIJKL":{74:"C",77:"F",79:"E",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ACEGHIJK":{74:"C",77:"H",79:"E",80:"K",81:"J",82:"A",85:"G",87:"I"},
-  "ACEGHIJL":{74:"C",77:"H",79:"E",80:"I",81:"J",82:"A",85:"G",87:"L"},
-  "ACEGHIKL":{74:"C",77:"H",79:"E",80:"K",81:"I",82:"A",85:"G",87:"L"},
-  "ACEGHJKL":{74:"C",77:"H",79:"E",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ACEGIJKL":{74:"C",77:"G",79:"E",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ACEHIJKL":{74:"C",77:"H",79:"E",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ACFGHIJK":{74:"C",77:"F",79:"H",80:"K",81:"J",82:"A",85:"G",87:"I"},
-  "ACFGHIJL":{74:"C",77:"F",79:"H",80:"I",81:"J",82:"A",85:"G",87:"L"},
-  "ACFGHIKL":{74:"C",77:"F",79:"H",80:"K",81:"I",82:"A",85:"G",87:"L"},
-  "ACFGHJKL":{74:"C",77:"F",79:"H",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ACFGIJKL":{74:"C",77:"F",79:"I",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ACFHIJKL":{74:"C",77:"F",79:"H",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ACGHIJKL":{74:"C",77:"G",79:"H",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ADEFGHIJ":{74:"D",77:"F",79:"H",80:"I",81:"J",82:"A",85:"G",87:"E"},
-  "ADEFGHIK":{74:"D",77:"F",79:"H",80:"K",81:"E",82:"A",85:"G",87:"I"},
-  "ADEFGHIL":{74:"D",77:"F",79:"H",80:"I",81:"E",82:"A",85:"G",87:"L"},
-  "ADEFGHJK":{74:"D",77:"F",79:"H",80:"K",81:"J",82:"A",85:"G",87:"E"},
-  "ADEFGHJL":{74:"D",77:"F",79:"H",80:"E",81:"J",82:"A",85:"G",87:"L"},
-  "ADEFGHKL":{74:"D",77:"F",79:"H",80:"K",81:"E",82:"A",85:"G",87:"L"},
-  "ADEFGIJK":{74:"D",77:"F",79:"E",80:"K",81:"J",82:"A",85:"G",87:"I"},
-  "ADEFGIJL":{74:"D",77:"F",79:"E",80:"I",81:"J",82:"A",85:"G",87:"L"},
-  "ADEFGIKL":{74:"D",77:"F",79:"E",80:"K",81:"I",82:"A",85:"G",87:"L"},
-  "ADEFGJKL":{74:"D",77:"F",79:"E",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ADEFHIJK":{74:"D",77:"F",79:"H",80:"K",81:"E",82:"A",85:"J",87:"I"},
-  "ADEFHIJL":{74:"D",77:"F",79:"H",80:"I",81:"E",82:"A",85:"J",87:"L"},
-  "ADEFHIKL":{74:"D",77:"F",79:"H",80:"K",81:"I",82:"A",85:"E",87:"L"},
-  "ADEFHJKL":{74:"D",77:"F",79:"H",80:"K",81:"E",82:"A",85:"J",87:"L"},
-  "ADEFIJKL":{74:"D",77:"F",79:"E",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ADEGHIJK":{74:"D",77:"H",79:"E",80:"K",81:"J",82:"A",85:"G",87:"I"},
-  "ADEGHIJL":{74:"D",77:"H",79:"E",80:"I",81:"J",82:"A",85:"G",87:"L"},
-  "ADEGHIKL":{74:"D",77:"H",79:"E",80:"K",81:"I",82:"A",85:"G",87:"L"},
-  "ADEGHJKL":{74:"D",77:"H",79:"E",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ADEGIJKL":{74:"D",77:"G",79:"E",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ADEHIJKL":{74:"D",77:"H",79:"E",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ADFGHIJK":{74:"D",77:"F",79:"H",80:"K",81:"J",82:"A",85:"G",87:"I"},
-  "ADFGHIJL":{74:"D",77:"F",79:"H",80:"I",81:"J",82:"A",85:"G",87:"L"},
-  "ADFGHIKL":{74:"D",77:"F",79:"H",80:"K",81:"I",82:"A",85:"G",87:"L"},
-  "ADFGHJKL":{74:"D",77:"F",79:"H",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ADFGIJKL":{74:"D",77:"F",79:"I",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "ADFHIJKL":{74:"D",77:"F",79:"H",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "ADGHIJKL":{74:"D",77:"G",79:"H",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "AEFGHIJK":{74:"F",77:"H",79:"E",80:"K",81:"J",82:"A",85:"G",87:"I"},
-  "AEFGHIJL":{74:"F",77:"H",79:"E",80:"I",81:"J",82:"A",85:"G",87:"L"},
-  "AEFGHIKL":{74:"F",77:"H",79:"E",80:"K",81:"I",82:"A",85:"G",87:"L"},
-  "AEFGHJKL":{74:"F",77:"H",79:"E",80:"K",81:"J",82:"A",85:"G",87:"L"},
-  "AEFGIJKL":{74:"F",77:"G",79:"E",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "AEFHIJKL":{74:"F",77:"H",79:"E",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "AEGHIJKL":{74:"A",77:"G",79:"E",80:"K",81:"I",82:"H",85:"J",87:"L"},
-  "AFGHIJKL":{74:"F",77:"G",79:"H",80:"K",81:"I",82:"A",85:"J",87:"L"},
-  "BCDEFGHI":{74:"D",77:"F",79:"C",80:"I",81:"B",82:"H",85:"G",87:"E"},
-  "BCDEFGHJ":{74:"C",77:"F",79:"H",80:"E",81:"B",82:"J",85:"G",87:"D"},
-  "BCDEFGHK":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"H",85:"G",87:"E"},
-  "BCDEFGHL":{74:"D",77:"F",79:"C",80:"E",81:"B",82:"H",85:"G",87:"L"},
-  "BCDEFGIJ":{74:"D",77:"F",79:"C",80:"I",81:"B",82:"J",85:"G",87:"E"},
-  "BCDEFGIK":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"E",85:"G",87:"I"},
-  "BCDEFGIL":{74:"D",77:"F",79:"C",80:"I",81:"B",82:"E",85:"G",87:"L"},
-  "BCDEFGJK":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"J",85:"G",87:"E"},
-  "BCDEFGJL":{74:"D",77:"F",79:"C",80:"E",81:"B",82:"J",85:"G",87:"L"},
-  "BCDEFGKL":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"E",85:"G",87:"L"},
-  "BCDEFHIJ":{74:"D",77:"F",79:"C",80:"I",81:"B",82:"H",85:"J",87:"E"},
-  "BCDEFHIK":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"H",85:"E",87:"I"},
-  "BCDEFHIL":{74:"D",77:"F",79:"C",80:"I",81:"B",82:"H",85:"E",87:"L"},
-  "BCDEFHJK":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"H",85:"J",87:"E"},
-  "BCDEFHJL":{74:"D",77:"F",79:"C",80:"E",81:"B",82:"H",85:"J",87:"L"},
-  "BCDEFHKL":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"H",85:"E",87:"L"},
-  "BCDEFIJK":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"E",85:"J",87:"I"},
-  "BCDEFIJL":{74:"D",77:"F",79:"C",80:"I",81:"B",82:"E",85:"J",87:"L"},
-  "BCDEFIKL":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"I",85:"E",87:"L"},
-  "BCDEFJKL":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"E",85:"J",87:"L"},
-  "BCDEGHIJ":{74:"C",77:"D",79:"H",80:"I",81:"B",82:"J",85:"G",87:"E"},
-  "BCDEGHIK":{74:"C",77:"D",79:"E",80:"K",81:"B",82:"H",85:"G",87:"I"},
-  "BCDEGHIL":{74:"C",77:"D",79:"E",80:"I",81:"B",82:"H",85:"G",87:"L"},
-  "BCDEGHJK":{74:"C",77:"D",79:"H",80:"K",81:"B",82:"J",85:"G",87:"E"},
-  "BCDEGHJL":{74:"C",77:"D",79:"H",80:"E",81:"B",82:"J",85:"G",87:"L"},
-  "BCDEGHKL":{74:"C",77:"D",79:"E",80:"K",81:"B",82:"H",85:"G",87:"L"},
-  "BCDEGIJK":{74:"C",77:"D",79:"E",80:"K",81:"B",82:"J",85:"G",87:"I"},
-  "BCDEGIJL":{74:"C",77:"D",79:"E",80:"I",81:"B",82:"J",85:"G",87:"L"},
-  "BCDEGIKL":{74:"C",77:"D",79:"E",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "BCDEGJKL":{74:"C",77:"D",79:"E",80:"K",81:"B",82:"J",85:"G",87:"L"},
-  "BCDEHIJK":{74:"C",77:"D",79:"E",80:"K",81:"B",82:"H",85:"J",87:"I"},
-  "BCDEHIJL":{74:"C",77:"D",79:"E",80:"I",81:"B",82:"H",85:"J",87:"L"},
-  "BCDEHIKL":{74:"C",77:"D",79:"E",80:"K",81:"B",82:"H",85:"I",87:"L"},
-  "BCDEHJKL":{74:"C",77:"D",79:"E",80:"K",81:"B",82:"H",85:"J",87:"L"},
-  "BCDEIJKL":{74:"C",77:"D",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BCDFGHIJ":{74:"C",77:"F",79:"H",80:"I",81:"B",82:"J",85:"G",87:"D"},
-  "BCDFGHIK":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"H",85:"G",87:"I"},
-  "BCDFGHIL":{74:"D",77:"F",79:"C",80:"I",81:"B",82:"H",85:"G",87:"L"},
-  "BCDFGHJK":{74:"C",77:"F",79:"H",80:"K",81:"B",82:"J",85:"G",87:"D"},
-  "BCDFGHJL":{74:"D",77:"F",79:"C",80:"J",81:"B",82:"H",85:"G",87:"L"},
-  "BCDFGHKL":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"H",85:"G",87:"L"},
-  "BCDFGIJK":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"J",85:"G",87:"I"},
-  "BCDFGIJL":{74:"D",77:"F",79:"C",80:"I",81:"B",82:"J",85:"G",87:"L"},
-  "BCDFGIKL":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "BCDFGJKL":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"J",85:"G",87:"L"},
-  "BCDFHIJK":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"H",85:"J",87:"I"},
-  "BCDFHIJL":{74:"D",77:"F",79:"C",80:"I",81:"B",82:"H",85:"J",87:"L"},
-  "BCDFHIKL":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"H",85:"I",87:"L"},
-  "BCDFHJKL":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"H",85:"J",87:"L"},
-  "BCDFIJKL":{74:"D",77:"F",79:"C",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BCDGHIJK":{74:"C",77:"D",79:"H",80:"K",81:"B",82:"J",85:"G",87:"I"},
-  "BCDGHIJL":{74:"C",77:"D",79:"H",80:"I",81:"B",82:"J",85:"G",87:"L"},
-  "BCDGHIKL":{74:"C",77:"D",79:"H",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "BCDGHJKL":{74:"C",77:"D",79:"H",80:"K",81:"B",82:"J",85:"G",87:"L"},
-  "BCDGIJKL":{74:"C",77:"D",79:"I",80:"K",81:"B",82:"J",85:"G",87:"L"},
-  "BCDHIJKL":{74:"C",77:"D",79:"H",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BCEFGHIJ":{74:"C",77:"F",79:"H",80:"I",81:"B",82:"J",85:"G",87:"E"},
-  "BCEFGHIK":{74:"C",77:"F",79:"E",80:"K",81:"B",82:"H",85:"G",87:"I"},
-  "BCEFGHIL":{74:"C",77:"F",79:"E",80:"I",81:"B",82:"H",85:"G",87:"L"},
-  "BCEFGHJK":{74:"C",77:"F",79:"H",80:"K",81:"B",82:"J",85:"G",87:"E"},
-  "BCEFGHJL":{74:"C",77:"F",79:"H",80:"E",81:"B",82:"J",85:"G",87:"L"},
-  "BCEFGHKL":{74:"C",77:"F",79:"E",80:"K",81:"B",82:"H",85:"G",87:"L"},
-  "BCEFGIJK":{74:"C",77:"F",79:"E",80:"K",81:"B",82:"J",85:"G",87:"I"},
-  "BCEFGIJL":{74:"C",77:"F",79:"E",80:"I",81:"B",82:"J",85:"G",87:"L"},
-  "BCEFGIKL":{74:"C",77:"F",79:"E",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "BCEFGJKL":{74:"C",77:"F",79:"E",80:"K",81:"B",82:"J",85:"G",87:"L"},
-  "BCEFHIJK":{74:"C",77:"F",79:"E",80:"K",81:"B",82:"H",85:"J",87:"I"},
-  "BCEFHIJL":{74:"C",77:"F",79:"E",80:"I",81:"B",82:"H",85:"J",87:"L"},
-  "BCEFHIKL":{74:"C",77:"F",79:"E",80:"K",81:"B",82:"H",85:"I",87:"L"},
-  "BCEFHJKL":{74:"C",77:"F",79:"E",80:"K",81:"B",82:"H",85:"J",87:"L"},
-  "BCEFIJKL":{74:"C",77:"F",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BCEGHIJK":{74:"C",77:"G",79:"E",80:"K",81:"B",82:"H",85:"J",87:"I"},
-  "BCEGHIJL":{74:"C",77:"G",79:"E",80:"I",81:"B",82:"H",85:"J",87:"L"},
-  "BCEGHIKL":{74:"C",77:"H",79:"E",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "BCEGHJKL":{74:"C",77:"G",79:"E",80:"K",81:"B",82:"H",85:"J",87:"L"},
-  "BCEGIJKL":{74:"C",77:"G",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BCEHIJKL":{74:"C",77:"H",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BCFGHIJK":{74:"C",77:"F",79:"H",80:"K",81:"B",82:"J",85:"G",87:"I"},
-  "BCFGHIJL":{74:"C",77:"F",79:"H",80:"I",81:"B",82:"J",85:"G",87:"L"},
-  "BCFGHIKL":{74:"C",77:"F",79:"H",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "BCFGHJKL":{74:"C",77:"F",79:"H",80:"K",81:"B",82:"J",85:"G",87:"L"},
-  "BCFGIJKL":{74:"C",77:"F",79:"I",80:"K",81:"B",82:"J",85:"G",87:"L"},
-  "BCFHIJKL":{74:"C",77:"F",79:"H",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BCGHIJKL":{74:"C",77:"G",79:"H",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BDEFGHIJ":{74:"D",77:"F",79:"H",80:"I",81:"B",82:"J",85:"G",87:"E"},
-  "BDEFGHIK":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"H",85:"G",87:"I"},
-  "BDEFGHIL":{74:"D",77:"F",79:"E",80:"I",81:"B",82:"H",85:"G",87:"L"},
-  "BDEFGHJK":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"J",85:"G",87:"E"},
-  "BDEFGHJL":{74:"D",77:"F",79:"H",80:"E",81:"B",82:"J",85:"G",87:"L"},
-  "BDEFGHKL":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"H",85:"G",87:"L"},
-  "BDEFGIJK":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"J",85:"G",87:"I"},
-  "BDEFGIJL":{74:"D",77:"F",79:"E",80:"I",81:"B",82:"J",85:"G",87:"L"},
-  "BDEFGIKL":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "BDEFGJKL":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"J",85:"G",87:"L"},
-  "BDEFHIJK":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"H",85:"J",87:"I"},
-  "BDEFHIJL":{74:"D",77:"F",79:"E",80:"I",81:"B",82:"H",85:"J",87:"L"},
-  "BDEFHIKL":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"H",85:"I",87:"L"},
-  "BDEFHJKL":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"H",85:"J",87:"L"},
-  "BDEFIJKL":{74:"D",77:"F",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BDEGHIJK":{74:"D",77:"G",79:"E",80:"K",81:"B",82:"H",85:"J",87:"I"},
-  "BDEGHIJL":{74:"D",77:"G",79:"E",80:"I",81:"B",82:"H",85:"J",87:"L"},
-  "BDEGHIKL":{74:"D",77:"H",79:"E",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "BDEGHJKL":{74:"D",77:"G",79:"E",80:"K",81:"B",82:"H",85:"J",87:"L"},
-  "BDEGIJKL":{74:"D",77:"G",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BDEHIJKL":{74:"D",77:"H",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BDFGHIJK":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"J",85:"G",87:"I"},
-  "BDFGHIJL":{74:"D",77:"F",79:"H",80:"I",81:"B",82:"J",85:"G",87:"L"},
-  "BDFGHIKL":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "BDFGHJKL":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"J",85:"G",87:"L"},
-  "BDFGIJKL":{74:"D",77:"F",79:"I",80:"K",81:"B",82:"J",85:"G",87:"L"},
-  "BDFHIJKL":{74:"D",77:"F",79:"H",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BDGHIJKL":{74:"D",77:"G",79:"H",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BEFGHIJK":{74:"F",77:"G",79:"E",80:"K",81:"B",82:"H",85:"J",87:"I"},
-  "BEFGHIJL":{74:"F",77:"G",79:"E",80:"I",81:"B",82:"H",85:"J",87:"L"},
-  "BEFGHIKL":{74:"F",77:"H",79:"E",80:"K",81:"B",82:"I",85:"G",87:"L"},
-  "BEFGHJKL":{74:"F",77:"G",79:"E",80:"K",81:"B",82:"H",85:"J",87:"L"},
-  "BEFGIJKL":{74:"F",77:"G",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BEFHIJKL":{74:"F",77:"H",79:"E",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "BEGHIJKL":{74:"B",77:"G",79:"E",80:"K",81:"I",82:"H",85:"J",87:"L"},
-  "BFGHIJKL":{74:"F",77:"G",79:"H",80:"K",81:"B",82:"I",85:"J",87:"L"},
-  "CDEFGHIJ":{74:"D",77:"F",79:"C",80:"I",81:"J",82:"H",85:"G",87:"E"},
-  "CDEFGHIK":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"H",85:"G",87:"I"},
-  "CDEFGHIL":{74:"D",77:"F",79:"C",80:"I",81:"E",82:"H",85:"G",87:"L"},
-  "CDEFGHJK":{74:"D",77:"F",79:"C",80:"K",81:"J",82:"H",85:"G",87:"E"},
-  "CDEFGHJL":{74:"D",77:"F",79:"C",80:"E",81:"J",82:"H",85:"G",87:"L"},
-  "CDEFGHKL":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"H",85:"G",87:"L"},
-  "CDEFGIJK":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"J",85:"G",87:"I"},
-  "CDEFGIJL":{74:"D",77:"F",79:"C",80:"I",81:"E",82:"J",85:"G",87:"L"},
-  "CDEFGIKL":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"I",85:"G",87:"L"},
-  "CDEFGJKL":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"J",85:"G",87:"L"},
-  "CDEFHIJK":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"H",85:"J",87:"I"},
-  "CDEFHIJL":{74:"D",77:"F",79:"C",80:"I",81:"E",82:"H",85:"J",87:"L"},
-  "CDEFHIKL":{74:"D",77:"F",79:"C",80:"K",81:"I",82:"H",85:"E",87:"L"},
-  "CDEFHJKL":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"H",85:"J",87:"L"},
-  "CDEFIJKL":{74:"D",77:"F",79:"C",80:"K",81:"E",82:"I",85:"J",87:"L"},
-  "CDEGHIJK":{74:"C",77:"D",79:"E",80:"K",81:"J",82:"H",85:"G",87:"I"},
-  "CDEGHIJL":{74:"C",77:"D",79:"E",80:"I",81:"J",82:"H",85:"G",87:"L"},
-  "CDEGHIKL":{74:"C",77:"D",79:"E",80:"K",81:"I",82:"H",85:"G",87:"L"},
-  "CDEGHJKL":{74:"C",77:"D",79:"E",80:"K",81:"J",82:"H",85:"G",87:"L"},
-  "CDEGIJKL":{74:"C",77:"D",79:"E",80:"K",81:"I",82:"J",85:"G",87:"L"},
-  "CDEHIJKL":{74:"C",77:"D",79:"E",80:"K",81:"I",82:"H",85:"J",87:"L"},
-  "CDFGHIJK":{74:"D",77:"F",79:"C",80:"K",81:"J",82:"H",85:"G",87:"I"},
-  "CDFGHIJL":{74:"D",77:"F",79:"C",80:"I",81:"J",82:"H",85:"G",87:"L"},
-  "CDFGHIKL":{74:"D",77:"F",79:"C",80:"K",81:"I",82:"H",85:"G",87:"L"},
-  "CDFGHJKL":{74:"D",77:"F",79:"C",80:"K",81:"J",82:"H",85:"G",87:"L"},
-  "CDFGIJKL":{74:"D",77:"F",79:"C",80:"K",81:"I",82:"J",85:"G",87:"L"},
-  "CDFHIJKL":{74:"D",77:"F",79:"C",80:"K",81:"I",82:"H",85:"J",87:"L"},
-  "CDGHIJKL":{74:"C",77:"D",79:"H",80:"K",81:"I",82:"J",85:"G",87:"L"},
-  "CEFGHIJK":{74:"C",77:"F",79:"E",80:"K",81:"J",82:"H",85:"G",87:"I"},
-  "CEFGHIJL":{74:"C",77:"F",79:"E",80:"I",81:"J",82:"H",85:"G",87:"L"},
-  "CEFGHIKL":{74:"C",77:"F",79:"E",80:"K",81:"I",82:"H",85:"G",87:"L"},
-  "CEFGHJKL":{74:"C",77:"F",79:"E",80:"K",81:"J",82:"H",85:"G",87:"L"},
-  "CEFGIJKL":{74:"C",77:"F",79:"E",80:"K",81:"I",82:"J",85:"G",87:"L"},
-  "CEFHIJKL":{74:"C",77:"F",79:"E",80:"K",81:"I",82:"H",85:"J",87:"L"},
-  "CEGHIJKL":{74:"C",77:"G",79:"E",80:"K",81:"I",82:"H",85:"J",87:"L"},
-  "CFGHIJKL":{74:"C",77:"F",79:"H",80:"K",81:"I",82:"J",85:"G",87:"L"},
-  "DEFGHIJK":{74:"D",77:"F",79:"E",80:"K",81:"J",82:"H",85:"G",87:"I"},
-  "DEFGHIJL":{74:"D",77:"F",79:"E",80:"I",81:"J",82:"H",85:"G",87:"L"},
-  "DEFGHIKL":{74:"D",77:"F",79:"E",80:"K",81:"I",82:"H",85:"G",87:"L"},
-  "DEFGHJKL":{74:"D",77:"F",79:"E",80:"K",81:"J",82:"H",85:"G",87:"L"},
-  "DEFGIJKL":{74:"D",77:"F",79:"E",80:"K",81:"I",82:"J",85:"G",87:"L"},
-  "DEFHIJKL":{74:"D",77:"F",79:"E",80:"K",81:"I",82:"H",85:"J",87:"L"},
-  "DEGHIJKL":{74:"D",77:"G",79:"E",80:"K",81:"I",82:"H",85:"J",87:"L"},
-  "DFGHIJKL":{74:"D",77:"F",79:"H",80:"K",81:"I",82:"J",85:"G",87:"L"},
-  "EFGHIJKL":{74:"F",77:"G",79:"E",80:"K",81:"I",82:"H",85:"J",87:"L"}
-};
-
 function resolveSlots(){
   const out={};
   const groups=Object.keys(WC_GROUPS);
@@ -1538,42 +1152,30 @@ function resolveSlots(){
   // Alleen toewijzen als ALLE 12 groepen klaar zijn (dan liggen de 8 derdes vast).
   const allComplete = groups.every(g=>groupStandings(g).complete);
   if(allComplete && top8.length===8){
+    // Koppel elke derde aan een toegestaan slot. Grootste flexibiliteit eerst:
+    // sorteer slots op aantal nog-beschikbare kandidaten (minst eerst) en ken toe.
     const byGroup={}; top8.forEach(t=>byGroup[t.group]=t.team);
-
-    // 1) OFFICIËLE FIFA-toewijzing (Annex C): zoek de rij voor exact deze 8
-    //    groepen. Dit is de gezaghebbende bron en reproduceert de echte boom
-    //    (bv. Algerije->M85, Ghana->M87) i.p.v. een willekeurige geldige
-    //    permutatie.
-    const key = top8.map(t=>t.group).sort().join('');
-    let assigned=false;
-    if(ANNEX_C[key]){
-      const row=ANNEX_C[key];               // { matchNo: groepLetter }
-      for(const mn in row){
-        const g=row[mn];
-        if(byGroup[g]) out["3@"+mn]=byGroup[g];
-      }
-      assigned=true;
-    }
-
-    // 2) TERUGVAL (zeldzaam: combinatie niet in de tabel): greedy backtracking
-    //    voor een geldige, volledige toewijzing binnen de toegestane groepen.
-    if(!assigned){
-      const remainingGroups=new Set(top8.map(t=>t.group));
-      const slots=Object.keys(THIRD_SLOTS).map(Number);
-      const assign={};
-      (function solve(i){
-        if(i===slots.length) return remainingGroups.size===0;
-        const mn=slots[i];
-        for(const g of THIRD_SLOTS[mn].allow){
-          if(remainingGroups.has(g)){
-            assign[mn]=g; remainingGroups.delete(g);
-            if(solve(i+1)) return true;
-            remainingGroups.add(g); delete assign[mn];
-          }
+    const remainingGroups=new Set(top8.map(t=>t.group));
+    const slots=Object.keys(THIRD_SLOTS).map(Number);
+    // greedy met backtracking voor een geldige, volledige toewijzing
+    const assign={};
+    function solve(i){
+      if(i===slots.length) return remainingGroups.size===0;
+      const mn=slots[i];
+      for(const g of THIRD_SLOTS[mn].allow){
+        if(remainingGroups.has(g)){
+          assign[mn]=g; remainingGroups.delete(g);
+          if(solve(i+1)) return true;
+          remainingGroups.add(g); delete assign[mn];
         }
-        return false;
-      })(0);
-      for(const mn in assign) out["3@"+mn]=byGroup[assign[mn]];
+      }
+      return false;
+    }
+    if(solve(0)){
+      for(const mn in assign){
+        const g=assign[mn];
+        out["3@"+mn]=byGroup[g];   // sleutel per matchNo voor de 3e-plaats
+      }
     }
   }
   return out;
@@ -1718,9 +1320,12 @@ function shortPlaceholder(s){
 function tieBoxHTML(m){
   // home/away kunnen een echt land zijn (-> vlag+code), een plaatshouder
   // (-> grijze tekst), of leeg (-> "—").
-  const row=(name,ph,score,win)=>{
+  // pen = strafschoppenscore voor deze kant (of null); winop = "p" als de
+  // wedstrijd op strafschoppen beslist is (winnaar dan via pen, niet via score).
+  const row=(name,ph,score,win,pen)=>{
+    const penTxt = pen!=null ? `<span class="bpen" title="strafschoppen">(${pen})</span>` : '';
     if(name){
-      return `<div class="bteam ${win?'win':''}">${flagImg(name)}<span class="bn" title="${esc(name)}">${esc(code3(name))}</span><span class="bs">${score!=null?score:''}</span></div>`;
+      return `<div class="bteam ${win?'win':''}">${flagImg(name)}<span class="bn" title="${esc(name)}">${esc(code3(name))}</span><span class="bs">${score!=null?score:''}${penTxt}</span></div>`;
     }
     if(ph){
       return `<div class="bteam ph"><span class="flag"></span><span class="bn" title="${esc(ph)}">${esc(shortPlaceholder(ph))}</span><span class="bs"></span></div>`;
@@ -1729,9 +1334,17 @@ function tieBoxHTML(m){
   };
   if(!m) return `<div class="btie-box">${row(null,null)}${row(null,null)}</div>`;
   const done=m.hs!=null && m.as_!=null;
+  const hasPen = m.phs!=null && m.pas!=null;
+  // winnaar: eerst op effectieve score; bij gelijke stand op strafschoppen
+  let homeWin=false, awayWin=false;
+  if(done){
+    if(m.hs>m.as_) homeWin=true;
+    else if(m.as_>m.hs) awayWin=true;
+    else if(hasPen){ homeWin=m.phs>m.pas; awayWin=m.pas>m.phs; }
+  }
   return `<div class="btie-box">
-    ${row(m.home,m.homePh,m.hs,done&&m.hs>m.as_)}
-    ${row(m.away,m.awayPh,m.as_,done&&m.as_>m.hs)}
+    ${row(m.home,m.homePh,m.hs,homeWin,hasPen?m.phs:null)}
+    ${row(m.away,m.awayPh,m.as_,awayWin,hasPen?m.pas:null)}
   </div>`;
 }
 
@@ -1746,24 +1359,33 @@ function renderBracket(){
   const N=ROUNDS[0]; // buitenste
 
   // ties per ronde, aangevuld tot vaste grootte.
-  // BELANGRIJK: alleen de LAATSTE 32 wordt uit de feed op bracketpositie gezet
-  // (verderop, via het matchnummer). De rondes daarna (R16/QF/SF/finale) worden
-  // NIET met rauwe feed-records op chronologische indices gevuld — dat gaf eerder
-  // duplicaten (een land stond zowel op zijn feed-index als op zijn doorgestroomde
-  // positie). We starten die rondes leeg en bouwen ze volledig op via doorstroming.
-  // De feed-records voor R16+ bewaren we apart om er enkel SCORES uit te halen,
-  // gematcht op de twee landen (zie de doorstroom-sectie hieronder).
+  // BELANGRIJK: alleen de buitenste ronde (laatste 32) en de finale worden hier
+  // (deels) uit de feed gevuld. De tussenrondes (1/8, 1/4, 1/2) worden NIET rauw
+  // uit de feed-volgorde gevuld, want feed-records komen chronologisch binnen en
+  // zonder bracketpositie -> dat gaf dubbele landen. Die rondes bouwen we verderop
+  // volledig deterministisch op via winnaar-doorstroming; de feed levert er enkel
+  // de SCORE voor (gematcht op landenpaar, zie findFeedScore).
   const byRound={};
   ROUNDS.concat(["Final"]).forEach(key=>{
     const size=key==="Final"?1:KO_SIZE[key];
     const arr=[]; for(let i=0;i<size;i++) arr.push(null);
     byRound[key]=arr;
   });
-  // feed-records per ronde voor latere score-matching (op landenpaar)
+  // feed-records per ronde bewaren we apart, om later scores op te zoeken
   const feedByRound={};
-  ROUNDS.slice(1).concat(["Final"]).forEach(key=>{
-    feedByRound[key]=WC_KO.filter(m=>m.round===key && (m.home||m.away));
-  });
+  ROUNDS.concat(["Final"]).forEach(key=>{ feedByRound[key]=WC_KO.filter(m=>m.round===key); });
+  // zoek de feed-score voor een wedstrijd in ronde `rd` tussen twee landen
+  const findFeedScore=(rd, home, away)=>{
+    const list=feedByRound[rd]||[];
+    const hit=list.find(m=>
+      (m.home===home && m.away===away) || (m.home===away && m.away===home));
+    if(!hit || hit.hs==null || hit.as_==null) return null;
+    // scores (en strafschoppen) teruggeven in de oriëntatie van (home, away)
+    const sameOrient = (hit.home===home);
+    return sameOrient
+      ? {hs:hit.hs, as_:hit.as_, phs:hit.phs, pas:hit.pas}
+      : {hs:hit.as_, as_:hit.hs, phs:hit.pas, pas:hit.phs};
+  };
 
   // --- Laatste 32 op VASTE bracketpositie zetten ---
   // De feed levert de wedstrijden chronologisch; wij plaatsen ze op hun
@@ -1791,43 +1413,93 @@ function renderBracket(){
       return null;
     };
 
-    // KERNPRINCIPE: de boom wordt opgebouwd uit (1) de OFFICIËLE matchcodes
-    // (KO_AFF: welk groepsslot thuis/uit speelt) en (2) de EIGEN groepsstanden
-    // + FIFA Annex C (resolveSlots: welk land elk slot inneemt). Dat is de enige
-    // bron van waarheid voor WIE waar staat. De feed levert ALLEEN de SCORE.
-    //
-    // Waarom niet de feed voor de affiches? De live-bron labelt het derde-plaats-
-    // slot soms met een runner-up (bv. Oostenrijk=2J op M85 i.p.v. Algerije=3J,
-    // Egypte=2G op M87 i.p.v. Ghana=3L). Door uitsluitend op de standen + Annex C
-    // te bouwen is zo'n foute affiche onmogelijk, en blijven er geen gaten over
-    // zolang de groepen (en dus de 8 beste derdes) bekend zijn.
-    //
-    // Een slot dat (nog) niet uit de standen op te lossen is — bv. omdat niet alle
-    // groepen af zijn — valt terug op het echte land uit de feed indien aanwezig,
-    // en anders op de plaatshouder-code ("3EFGIJ", "2G", …).
-    const usedTeams = new Set();   // voorkomt elk dubbel land in de laatste 32
     const placed = order.map(no=>{
       const aff = KO_AFF[no] || [null,null];
-      const fed = byNo[no];                          // feed-record (enkel voor score)
-      let homeTeam = teamForSlot(aff[0], no, false); // standen/Annex C leidend
-      let awayTeam = teamForSlot(aff[1], no, true);
-      const fedHome = fed && fed.home;
-      const fedAway = fed && fed.away;
-      // Terugval op echt feed-land alleen als de standen het slot niet konden
-      // invullen (en dat land nog nergens anders in de boom staat).
-      if(!homeTeam && fedHome && !usedTeams.has(fedHome)) homeTeam = fedHome;
-      if(!awayTeam && fedAway && !usedTeams.has(fedAway)) awayTeam = fedAway;
-      if(homeTeam) usedTeams.add(homeTeam);
-      if(awayTeam) usedTeams.add(awayTeam);
+      const fed = byNo[no];                          // feed-record (kan leeg zijn)
+      // Wie speelt waar hangt af van het slottype:
+      //  • winnaar/runner-up (codes "1X"/"2X"): de GROEPSSTANDEN zijn leidend.
+      //    Die liggen wiskundig vast (bv. Zwitserland = 1B) en mogen niet door
+      //    een voorlopige of foutgeplaatste feed-affiche overschreven worden.
+      //  • beste derde (codes "3..."): de FEED is leidend, want de officiële
+      //    toewijzing van de 8 derdes aan de slots (FIFA Annex C, 495 gevallen)
+      //    is gezaghebbender dan onze eigen benadering.
+      // De SCORE komt altijd van de feed zodra de wedstrijd gespeeld is.
+      const pick = (code, isAway) => {
+        const derived = teamForSlot(code, no, isAway);
+        const fedTeam = fed ? (isAway ? fed.away : fed.home) : null;
+        if(code && code[0]==='3') return fedTeam || derived || null;  // derde: feed eerst
+        return derived || fedTeam || null;                           // 1X/2X: standen eerst
+      };
+      const homeTeam = pick(aff[0], false);
+      const awayTeam = pick(aff[1], true);
+      const hs = fed ? fed.hs : null;
+      const as_ = fed ? fed.as_ : null;
+      const phs = fed ? fed.phs : null;
+      const pas = fed ? fed.pas : null;
       return {
         round:"Round of 32", matchNo:no,
         home: homeTeam, away: awayTeam,
         homePh: homeTeam ? null : aff[0],
         awayPh: awayTeam ? null : aff[1],
-        hs: fed ? fed.hs : null,
-        as_: fed ? fed.as_ : null
+        hs, as_, phs, pas,
+        _fedHome: !!(fed && fed.home),               // kwam dit land uit de feed?
+        _fedAway: !!(fed && fed.away)
       };
     });
+
+    // Globale dedup: geen enkel land mag twee keer in de laatste 32 staan.
+    // Duplicaten kunnen ontstaan doordat (a) een land zowel uit de feed als uit
+    // de standen-fallback komt, of (b) de feed-data zelf hetzelfde land in twee
+    // wedstrijden zet (bv. zowel als 1B in M85 als — foutief — als 2G in M88).
+    // We kiezen per land de JUISTE plaatsing met behulp van de groepsstanden:
+    // de plaatsing waarvan de officiële affiche-code overeenkomt met de
+    // werkelijke positie van dat land (uit 'resolved') is correct; de andere
+    // wordt teruggezet naar de plaatshouder-code.
+    {
+      // land -> set van slotcodes die het volgens de standen hoort in te nemen
+      const slotForTeam = {};
+      Object.keys(resolved).forEach(code=>{
+        const team=resolved[code]; if(!team) return;
+        (slotForTeam[team] = slotForTeam[team] || new Set()).add(code);
+      });
+      // hoort 'team' op deze positie (matchNo + kant)? Vergelijk affiche-code.
+      const codeMatches = (team, matchNo, side) => {
+        const aff=KO_AFF[matchNo]||[null,null];
+        const code = side==="home" ? aff[0] : aff[1];
+        if(!code) return false;
+        const set = slotForTeam[team];
+        if(!set) return false;
+        if(set.has(code)) return true;                 // exact (bv. "1B")
+        // derde-plaats: 'resolved' gebruikt sleutel "3@<matchNo>"
+        if(code[0]==='3' && set.has("3@"+matchNo)) return true;
+        return false;
+      };
+
+      const sides=["home","away"];
+      const occur={};                                  // team -> [{idx,side,fed}]
+      placed.forEach((p,idx)=>sides.forEach(side=>{
+        const team=p[side]; if(!team) return;
+        const fed = side==="home" ? p._fedHome : p._fedAway;
+        (occur[team]=occur[team]||[]).push({idx,side,fed});
+      }));
+
+      const clearSlot=(idx,side)=>{
+        const p=placed[idx]; const aff=KO_AFF[p.matchNo]||[null,null];
+        p[side]=null;
+        if(side==="home") p.homePh=aff[0]; else p.awayPh=aff[1];
+      };
+
+      Object.keys(occur).forEach(team=>{
+        const list=occur[team];
+        if(list.length<2) return;                      // geen duplicaat
+        // kies de te behouden plaatsing: 1) affiche-code matcht de standen,
+        // anders 2) een feed-plaatsing, anders 3) de eerste.
+        let keep = list.find(o=>codeMatches(team,placed[o.idx].matchNo,o.side));
+        if(!keep) keep = list.find(o=>o.fed);
+        if(!keep) keep = list[0];
+        list.forEach(o=>{ if(o!==keep) clearSlot(o.idx,o.side); });
+      });
+    }
 
     // feed-records zonder matchNo (datum/id niet herkend) op vrije plekken,
     // maar NOOIT een land dat al elders in de boom staat (anders dubbel).
@@ -1849,60 +1521,45 @@ function renderBracket(){
   }
 
   // --- Winnaars laten doorstromen naar de volgende rondes ---
-  // De feed levert lang niet altijd de R16/QF/SF-affiches; en als ze komen,
-  // staan ze in chronologische (niet-bracket) volgorde. We bouwen daarom elke
-  // ronde deterministisch op uit de winnaars van de vorige ronde, volgens de
-  // vaste bracketkoppeling (buurparen 2k en 2k+1 -> ouder k). Een feed-record
-  // met ECHTE teams/score op die plek heeft voorrang (echte uitslag); anders
-  // vullen we de winnaar in die wiskundig doorstroomt.
+  // De tussenrondes (1/8, 1/4, 1/2) en de finale worden VOLLEDIG opgebouwd uit de
+  // winnaars van de vorige ronde, volgens de vaste bracketkoppeling (buurparen
+  // 2k en 2k+1 -> ouder k). De feed wordt NIET gebruikt om teams te plaatsen
+  // (dat gaf dubbele landen omdat feed-records chronologisch en zonder
+  // bracketpositie binnenkomen), maar alleen om de SCORE van een doorgestroomde
+  // wedstrijd op te halen via het landenpaar (findFeedScore).
   {
     const winnerOf = (tie) => {
       if(!tie) return null;
       if(tie.hs==null || tie.as_==null) return null;     // nog niet gespeeld
-      if(tie.hs===tie.as_) return null;                   // gelijk (penalty's onbekend)
-      const w = tie.hs>tie.as_ ? tie.home : tie.away;
-      return w || null;                                   // alleen echte landen
+      if(tie.hs!==tie.as_) return tie.hs>tie.as_ ? tie.home : tie.away;
+      // effectieve score gelijk -> beslist op strafschoppen (indien bekend)
+      if(tie.phs!=null && tie.pas!=null && tie.phs!==tie.pas)
+        return tie.phs>tie.pas ? tie.home : tie.away;
+      return null;                                         // gelijk, winnaar nog onbekend
     };
-    // Zoek in de feed-records van deze ronde een uitslag die hoort bij het
-    // doorgestroomde landenpaar (home/away in willekeurige volgorde). Geeft de
-    // score terug in de volgorde van (home,away) zoals doorgestroomd.
-    const scoreFor = (roundKey, home, away) => {
-      const recs = feedByRound[roundKey] || [];
-      for(const f of recs){
-        if(f.hs==null || f.as_==null) continue;           // geen uitslag
-        if(home && away && f.home===home && f.away===away) return [f.hs, f.as_];
-        if(home && away && f.home===away && f.away===home) return [f.as_, f.hs]; // omgekeerd
-        // één kant bekend (de andere nog niet doorgestroomd): tolereer match op één team
-        if(home && !away && (f.home===home || f.away===home))
-          return f.home===home ? [f.hs,f.as_] : [f.as_,f.hs];
-        if(away && !home && (f.home===away || f.away===away))
-          return f.home===away ? [f.as_,f.hs] : [f.hs,f.as_];
+    const buildTie = (round, wHome, wAway) => {
+      let hs=null, as_=null, phs=null, pas=null;
+      if(wHome && wAway){
+        const sc = findFeedScore(round, wHome, wAway);
+        if(sc){ hs=sc.hs; as_=sc.as_; phs=sc.phs; pas=sc.pas; }
       }
-      return [null,null];
+      return {
+        round, matchNo:null,
+        home: wHome||null, away: wAway||null,
+        homePh: wHome?null:null, awayPh: wAway?null:null,
+        hs, as_, phs, pas
+      };
     };
     for(let r=1;r<ROUNDS.length;r++){
       const prev = byRound[ROUNDS[r-1]];
       const cur  = byRound[ROUNDS[r]];
       for(let k=0;k<cur.length;k++){
-        const wHome = winnerOf(prev[2*k]);
-        const wAway = winnerOf(prev[2*k+1]);
-        const [hs, as_] = scoreFor(ROUNDS[r], wHome, wAway);
-        cur[k] = {
-          round: ROUNDS[r], matchNo: null,
-          home: wHome, away: wAway,
-          homePh: null, awayPh: null,
-          hs, as_
-        };
+        cur[k] = buildTie(ROUNDS[r], winnerOf(prev[2*k]), winnerOf(prev[2*k+1]));
       }
     }
     // finale: winnaars van de twee halve finales
     const sf = byRound["Semi-finals"];
-    const fHome = winnerOf(sf[0]), fAway = winnerOf(sf[1]);
-    if(fHome || fAway){
-      const [hs, as_] = scoreFor("Final", fHome, fAway);
-      byRound["Final"][0] = {round:"Final", matchNo:null, home:fHome, away:fAway,
-        homePh:null, awayPh:null, hs, as_};
-    }
+    byRound["Final"][0] = buildTie("Final", winnerOf(sf[0]), winnerOf(sf[1]));
   }
 
   const perHalf = KO_SIZE[ROUNDS[0]]/2;         // 8 buitenste ties per helft
@@ -2008,10 +1665,15 @@ function renderBracket(){
 
   // --- kampioen ---
   let champHTML='';
-  if(fdone && finalTie.hs!==finalTie.as_){
-    const champ=finalTie.hs>finalTie.as_?finalTie.home:finalTie.away;
-    champHTML=`<div class="bchamp"><div class="bc-label">🏆 Wereldkampioen</div>
-      <div class="bc-name">${flagImg(champ)}${esc(champ)}</div></div>`;
+  if(fdone){
+    let champ=null;
+    if(finalTie.hs!==finalTie.as_) champ = finalTie.hs>finalTie.as_?finalTie.home:finalTie.away;
+    else if(finalTie.phs!=null && finalTie.pas!=null && finalTie.phs!==finalTie.pas)
+      champ = finalTie.phs>finalTie.pas?finalTie.home:finalTie.away;
+    if(champ){
+      champHTML=`<div class="bchamp"><div class="bc-label">🏆 Wereldkampioen</div>
+        <div class="bc-name">${flagImg(champ)}${esc(champ)}</div></div>`;
+    }
   }
 
   // --- kop-rij met ronde-namen ---
@@ -2215,19 +1877,49 @@ function normalizeFootballDataMatch(fm) {
   const score = fm.score || {};
   const fullTime = score.fullTime || {};
   const halfTime = score.halfTime || {};
+  const regularTime = score.regularTime || {};
+  const extraTime = score.extraTime || {};
+  const penalties = score.penalties || {};
   const ft = Array.isArray(score.ft) ? score.ft : null;
 
-  const homeScore =
-    typeof fullTime.home === "number" ? fullTime.home :
-    typeof halfTime.home === "number" ? halfTime.home :
-    (ft && typeof ft[0] === "number") ? ft[0] :
-    null;
+  const num = v => (typeof v === "number" ? v : null);
 
-  const awayScore =
-    typeof fullTime.away === "number" ? fullTime.away :
-    typeof halfTime.away === "number" ? halfTime.away :
-    (ft && typeof ft[1] === "number") ? ft[1] :
-    null;
+  // Penalty-shootout? football-data geeft dan in fullTime de OPGETELDE score
+  // (reguliere/verlengingsscore + strafschoppen). Wij willen die scheiden:
+  //   - effectieve score = stand na 90' (regularTime) + eventuele verlenging
+  //   - penalty's        = aparte strafschoppenreeks
+  const isShootout = (score.duration === "PENALTY_SHOOTOUT") ||
+    (num(penalties.home) !== null && num(penalties.away) !== null);
+
+  let homeScore, awayScore, penHome=null, penAway=null;
+
+  if (isShootout) {
+    // effectieve score: regularTime (+ extraTime indien aanwezig)
+    const rh = num(regularTime.home), ra = num(regularTime.away);
+    const eh = num(extraTime.home),   ea = num(extraTime.away);
+    if (rh !== null && ra !== null) {
+      homeScore = rh + (eh || 0);
+      awayScore = ra + (ea || 0);
+    } else {
+      // geen regularTime in de feed: leid effectieve score af door de
+      // strafschoppen van de opgetelde fullTime af te trekken.
+      const fh = num(fullTime.home), fa = num(fullTime.away);
+      const ph = num(penalties.home), pa = num(penalties.away);
+      homeScore = (fh !== null && ph !== null) ? fh - ph : (fh !== null ? fh : null);
+      awayScore = (fa !== null && pa !== null) ? fa - pa : (fa !== null ? fa : null);
+    }
+    penHome = num(penalties.home);
+    penAway = num(penalties.away);
+  } else {
+    homeScore =
+      num(fullTime.home) !== null ? fullTime.home :
+      num(halfTime.home) !== null ? halfTime.home :
+      (ft && typeof ft[0] === "number") ? ft[0] : null;
+    awayScore =
+      num(fullTime.away) !== null ? fullTime.away :
+      num(halfTime.away) !== null ? halfTime.away :
+      (ft && typeof ft[1] === "number") ? ft[1] : null;
+  }
 
   return {
     utcDate: fm.utcDate,
@@ -2239,6 +1931,8 @@ function normalizeFootballDataMatch(fm) {
     away,
     hs: homeScore,
     as_: awayScore,
+    phs: penHome,           // strafschoppen thuis (null als geen shootout)
+    pas: penAway,           // strafschoppen uit
   };
 }
 
@@ -2440,6 +2134,8 @@ function applyLiveData(json) {
       awayPh: A.ph,
       hs: fm.hs,
       as_: fm.as_,
+      phs: fm.phs,             // strafschoppen thuis (null als geen shootout)
+      pas: fm.pas,             // strafschoppen uit
     });
   });
 
@@ -2614,8 +2310,10 @@ function computeCountryPoints(){
   });
   // 2) doorstroming: winnaar van een ronde bereikt de volgende ronde
   const winnerOfKO = (m)=>{
-    if(!m || m.hs==null || m.as_==null || m.hs===m.as_) return null;
-    return m.hs>m.as_ ? m.home : m.away;
+    if(!m || m.hs==null || m.as_==null) return null;
+    if(m.hs!==m.as_) return m.hs>m.as_ ? m.home : m.away;
+    if(m.phs!=null && m.pas!=null && m.phs!==m.pas) return m.phs>m.pas ? m.home : m.away;
+    return null;
   };
   const nextOf = {"Round of 32":"Round of 16","Round of 16":"Quarter-finals",
                   "Quarter-finals":"Semi-finals","Semi-finals":"Final"};
@@ -2631,7 +2329,8 @@ function computeCountryPoints(){
   });
   // wereldkampioen +15 = winnaar van de finale
   WC_KO.filter(m=>m.round==="Final" && m.hs!==null && m.as_!==null).forEach(m=>{
-    const champ = m.hs>m.as_ ? m.home : (m.as_>m.hs ? m.away : null);
+    let champ = m.hs>m.as_ ? m.home : (m.as_>m.hs ? m.away : null);
+    if(!champ && m.phs!=null && m.pas!=null && m.phs!==m.pas) champ = m.phs>m.pas?m.home:m.away;
     if(champ && res[champ]) res[champ].raw += 15;
   });
 
@@ -2701,14 +2400,21 @@ async function loadParticipants(){
    de finale gespeeld is. Geeft een Set van uitgesloten landen terug. */
 function worldCupTop3(){
   const excl=new Set();
+  // winnaar/verliezer van een wedstrijd, ook bij beslissing op strafschoppen
+  const sides=(m)=>{
+    if(m.hs!==m.as_) return m.hs>m.as_ ? [m.home,m.away] : [m.away,m.home];
+    if(m.phs!=null && m.pas!=null && m.phs!==m.pas) return m.phs>m.pas ? [m.home,m.away] : [m.away,m.home];
+    return null;
+  };
   const fin=WC_KO.find(m=>m.round==="Final" && m.hs!==null && m.as_!==null);
-  if(fin && fin.hs!==fin.as_){
-    excl.add(fin.hs>fin.as_? fin.home : fin.away); // kampioen
-    excl.add(fin.hs>fin.as_? fin.away : fin.home); // verliezend finalist
+  if(fin){
+    const s=sides(fin);
+    if(s){ excl.add(s[0]); excl.add(s[1]); } // kampioen + verliezend finalist
   }
   const tp=WC_KO.find(m=>m.round==="Third place" && m.hs!==null && m.as_!==null);
-  if(tp && tp.hs!==tp.as_){
-    excl.add(tp.hs>tp.as_? tp.home : tp.away);     // 3e plaats
+  if(tp){
+    const s=sides(tp);
+    if(s){ excl.add(s[0]); }                 // 3e plaats
   }
   return excl;
 }
