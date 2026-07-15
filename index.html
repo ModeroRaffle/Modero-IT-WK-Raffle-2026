@@ -207,7 +207,7 @@ h1{
   box-shadow:0 28px 70px rgba(47,79,124,.14);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
 }
 .board-head{
-  display:grid;grid-template-columns:54px 1fr 1fr 50px 86px;
+  display:grid;grid-template-columns:96px 1fr 1fr 50px 86px;
   gap:8px;padding:14px 18px;
   font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;
   color:#fff;font-weight:800;border-bottom:0;
@@ -215,7 +215,7 @@ h1{
 }
 .board-head .r{text-align:center}
 .row{
-  display:grid;grid-template-columns:54px 1fr 1fr 50px 86px;gap:8px;
+  display:grid;grid-template-columns:96px 1fr 1fr 50px 86px;gap:8px;
   padding:14px 18px;align-items:center;
   border-bottom:1px solid rgba(24,62,118,.10);
   animation:fade .5s ease backwards;transition:background .2s;
@@ -224,7 +224,7 @@ h1{
 .row:hover{background:rgba(13,120,255,.045)}
 .row:last-child{border-bottom:none}
 @keyframes fade{from{opacity:0;transform:translateX(-8px)}}
-.pos{font-family:'Bebas Neue';font-size:1.5rem;text-align:center;color:#31517f}
+.pos{font-family:'Bebas Neue';font-size:1.5rem;text-align:center;color:#31517f;display:flex;align-items:center;justify-content:center}
 .row.top1 .pos{color:var(--gold)} .row.top2 .pos{color:var(--silver)}
 .row.top3 .pos{color:var(--bronze)} .row.top4 .pos{color:var(--fourth)}
 .name{font-weight:800;font-size:1rem}
@@ -244,9 +244,62 @@ h1{
 .prize-tag.t3{background:var(--bronze);color:#2a1500}
 .prize-tag.t4{background:var(--fourth);color:#06203f}
 .prize-tag.tex{background:#e8eef7;color:#66769a}
-.row.excluded{opacity:.4;filter:grayscale(1)}
+.row.excluded{
+  opacity:1;
+  filter:grayscale(.78);
+  background:linear-gradient(90deg,rgba(102,118,154,.11),rgba(255,255,255,.10));
+}
+.row.excluded .name,
+.row.excluded .country,
+.row.excluded .pot,
+.row.excluded .score{opacity:.52}
 .row.excluded .score{color:var(--text-dim)}
 .row.excluded .pos{color:var(--text-dim)}
+.row.excluded .ex-pos{
+  font-family:'Archivo',system-ui,sans-serif;
+  font-size:.58rem;
+  line-height:1;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  font-weight:900;
+  color:#6f7d9d;
+  background:#eef3fb;
+  border:1px solid rgba(102,118,154,.22);
+  border-radius:999px;
+  padding:6px 9px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.excluded-list{
+  max-width:720px;
+  margin:-18px auto 24px;
+  padding:11px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px 12px;
+  flex-wrap:wrap;
+  color:var(--text-dim);
+  background:rgba(255,255,255,.60);
+  border:1px solid rgba(24,62,118,.10);
+  border-radius:16px;
+  box-shadow:0 12px 28px rgba(20,55,110,.07);
+}
+.excluded-list:empty{display:none}
+.excluded-title{font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.10em;color:#66769a}
+.excluded-chips{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.excluded-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 10px;border-radius:999px;
+  background:#f3f6fb;border:1px solid rgba(102,118,154,.16);
+  font-size:.78rem;font-weight:800;color:#09215c;
+}
+.excluded-chip .flag{width:22px;height:15px;margin:0;box-shadow:none}
+.excluded-chip em{font-style:normal;font-size:.66rem;font-weight:900;color:#7a86a4;text-transform:uppercase;letter-spacing:.05em}
+@media(max-width:560px){
+  .excluded-list{margin:-14px auto 20px;align-items:flex-start;justify-content:flex-start}
+}
 
 /* ----- FOOTER / paneel ----- */
 footer{text-align:center;margin-top:36px;color:var(--text-dim);font-size:.8rem;line-height:1.7}
@@ -262,7 +315,7 @@ footer .powered .brand{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;let
 @media(max-width:560px){
   .podium{grid-template-columns:1fr;max-width:320px}
   .pod.p1{transform:none;animation-name:rise}
-  .board-head,.row{grid-template-columns:40px 1fr 40px 70px}
+  .board-head,.row{grid-template-columns:90px 1fr 40px 70px}
   .board-head .h-country,.country{display:none}
 }
 
@@ -515,6 +568,7 @@ footer .powered .brand{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;let
     <p class="updated" id="liveSource" style="margin-top:-18px;margin-bottom:22px;font-size:.72rem"></p>
 
     <div class="podium" id="podium"></div>
+    <div class="excluded-list" id="excludedCountries"></div>
     <div class="podium4-slot" id="podium4"></div>
 
     <div class="board">
@@ -2485,28 +2539,56 @@ async function loadParticipants(){
   }
 }
 
-/* Detecteer de WK-top-3 (kampioen, verliezend finalist, 3e) zodra
-   de finale gespeeld is. Geeft een Set van uitgesloten landen terug. */
-function worldCupTop3(){
-  const excl=new Set();
-  // winnaar/verliezer van een wedstrijd, ook bij beslissing op strafschoppen
+/* Detecteer landen die niet meer meetellen voor de puntencompetitie.
+   De effectieve WK top-3 wordt uitgesloten. Finalisten tellen al mee zodra
+   ze bekend zijn, omdat ze dan minstens 2e worden. */
+const MANUAL_EXCLUDED_COUNTRIES = ["Spain"]; // Spain wint sowieso een prijs in de klassieke competitie
+const EXCLUDED_CLASSIC_REASON = "wint prijs in klassieke competitie";
+
+function worldCupExclusions(){
+  const info=new Map();
+  const add=(team,reason)=>{
+    if(team && POT[team]) info.set(team, reason || EXCLUDED_CLASSIC_REASON);
+  };
   const sides=(m)=>{
+    if(!m || !m.home || !m.away || m.hs==null || m.as_==null) return null;
     if(m.hs!==m.as_) return m.hs>m.as_ ? [m.home,m.away] : [m.away,m.home];
     if(m.phs!=null && m.pas!=null && m.phs!==m.pas) return m.phs>m.pas ? [m.home,m.away] : [m.away,m.home];
     return null;
   };
-  const fin=WC_KO.find(m=>m.round==="Final" && m.hs!==null && m.as_!==null);
-  if(fin){
+  const winnerOfKO=(m)=>{
+    const s=sides(m);
+    return s ? s[0] : null;
+  };
+
+  // Handmatige zekerheid voor de actuele eindfase.
+  MANUAL_EXCLUDED_COUNTRIES.forEach(t=>add(t,EXCLUDED_CLASSIC_REASON));
+
+  // Als een halve finale gespeeld is, is de winnaar ook al finalist en dus uitgesloten.
+  WC_KO.filter(m=>m.round==="Semi-finals").forEach(sf=>{
+    const w=winnerOfKO(sf);
+    if(w) add(w,EXCLUDED_CLASSIC_REASON);
+  });
+
+  // Elke bekende finalist is zeker van de WK top-2, ook als de finale nog niet gespeeld is.
+  // Is de finale al gespeeld, dan overschrijven we de algemene reden met de exacte plaats.
+  WC_KO.filter(m=>m.round==="Final").forEach(fin=>{
+    add(fin.home,EXCLUDED_CLASSIC_REASON);
+    add(fin.away,EXCLUDED_CLASSIC_REASON);
     const s=sides(fin);
-    if(s){ excl.add(s[0]); excl.add(s[1]); } // kampioen + verliezend finalist
-  }
-  const tp=WC_KO.find(m=>m.round==="Third place" && m.hs!==null && m.as_!==null);
-  if(tp){
+    if(s){ add(s[0],EXCLUDED_CLASSIC_REASON); add(s[1],EXCLUDED_CLASSIC_REASON); }
+  });
+
+  // De winnaar van de troostfinale wordt 3e en telt dan ook niet meer mee.
+  WC_KO.filter(m=>m.round==="Third place").forEach(tp=>{
     const s=sides(tp);
-    if(s){ excl.add(s[0]); }                 // 3e plaats
-  }
-  return excl;
+    if(s) add(s[0],EXCLUDED_CLASSIC_REASON);
+  });
+
+  return info;
 }
+
+function worldCupTop3(){ return new Set(worldCupExclusions().keys()); }
 
 const PRIZE_TIERS=[35,25,15,10]; // %, plaats 1..4
 
@@ -2517,26 +2599,27 @@ const PRIZE_TIERS=[35,25,15,10]; // %, plaats 1..4
      van trappen bij gedeelde plaatsen. */
 function buildKlassement(){
   const cp=computeCountryPoints();
-  const excl=worldCupTop3();
+  const exclInfo=worldCupExclusions();
   let rows=PARTICIPANTS.map(p=>{
     const c=cp[p.country];
     return {
       name:p.name, country:p.country,
       pot: c? c.pot : (POT[p.country]||""),
       score: c? c.score : 0,
-      excluded: excl.has(p.country)
+      excluded: exclInfo.has(p.country),
+      excludedReason: exclInfo.get(p.country) || ""
     };
   });
   // sorteer op eindscore (hoog->laag), gelijke stand alfabetisch
   rows.sort((a,b)=> b.score-a.score || a.name.localeCompare(b.name,'nl'));
 
-  // --- weergegeven PLAATS ---
-  // Deelnemers MET punten: gedeelde plaats bij gelijke score, doorlopend
-  //   genummerd (elke verschillende score = volgend nummer).
-  // Deelnemers met 0 punten: elk een eigen oplopend nummer (alfabetisch,
-  //   want zo gesorteerd), beginnend na de laatste plaats van de scorenden.
+  // --- effectieve PLAATS ---
+  // Uitgesloten landen blijven op hun scorepositie in de lijst staan, maar
+  // krijgen geen nummer. De nummering loopt enkel over de niet-uitgesloten
+  // deelnemers, zodat bv. de eerste niet-uitgesloten deelnemer effectief #1 is.
+  const eligible=rows.filter(r=>!r.excluded);
   let pos=0, prevScore=null;
-  rows.forEach(r=>{
+  eligible.forEach(r=>{
     if(r.score>0){
       if(prevScore===null || r.score!==prevScore){ pos++; prevScore=r.score; }
       r.rank=pos;
@@ -2547,12 +2630,12 @@ function buildKlassement(){
       prevScore=r.score; // 0
     }
   });
+  rows.filter(r=>r.excluded).forEach(r=>{ r.rank=null; });
 
   // --- prijsverdeling: enkel niet-uitgesloten deelnemers ---
   // We lopen de niet-uitgesloten deelnemers af in ranking-volgorde en
   // wijzen prijstrappen 1..4 toe. Bij gedeelde score delen ze de som
   // van de betrokken trappen.
-  const eligible=rows.filter(r=>!r.excluded);
   // Plaats-gebaseerde prijs, doorlopend genummerd (dense ranking):
   // elke verschillende eindscore = volgende plaats. Plaats 1=35%, 2=25%,
   // 3=15%, 4=10% (vast). Gedeelde plaats => dat ene percentage gesplitst.
@@ -2585,11 +2668,25 @@ function fmtPct(p){
   return (Number.isInteger(p)? String(p) : String(Math.round(p*10)/10).replace('.',','))+"%";
 }
 
+function renderExcludedCountries(){
+  const box=document.getElementById('excludedCountries');
+  if(!box) return;
+  const exclInfo=worldCupExclusions();
+  const list=Array.from(exclInfo.entries()).sort((a,b)=>a[0].localeCompare(b[0],'nl'));
+  if(!list.length){ box.innerHTML=''; return; }
+  box.innerHTML = `<div class="excluded-title">Uitgesloten van puntencompetitie</div>
+    <div class="excluded-chips">${list.map(([country,reason])=>
+      `<span class="excluded-chip">${flagImg(country)}<span>${esc(country)}</span><em>${esc(reason)}</em></span>`
+    ).join('')}</div>`;
+}
+
 function renderKlassement(){
   const rows=buildKlassement();
   const podium=document.getElementById('podium');
   const podium4=document.getElementById('podium4');
   const box=document.getElementById('rows');
+
+  renderExcludedCountries();
 
   if(!rows.length){
     if(podium) podium.innerHTML='';
@@ -2693,14 +2790,15 @@ function renderKlassement(){
     const flag=flagImg(r.country);
     const exCls = r.excluded ? 'excluded' : '';
     const topCls = (!r.excluded && r.prize!=null && r.prizeRank<=4) ? `top${r.prizeRank}` : '';
+    const rankHTML = r.excluded ? '<span class="ex-pos">Uitgesloten</span>' : esc(r.rank);
     let tag='';
     if(r.excluded){
-      tag='<span class="prize-tag tex">WK top 3</span>';
+      tag='<span class="prize-tag tex">Uitgesloten</span>';
     } else if(r.prize!=null){
       tag=`<span class="prize-tag t${Math.min(r.prizeRank,4)}">${fmtPct(r.prize)}</span>`;
     }
     return `<div class="row ${topCls} ${exCls}" style="animation-delay:${Math.min(idx,30)*0.03}s">
-      <div class="pos">${r.rank}</div>
+      <div class="pos">${rankHTML}</div>
       <div class="name">${esc(r.name)}${tag}</div>
       <div class="country">${flag}<span>${esc(r.country)}</span></div>
       <div class="pot pot${r.pot||''}">${r.pot||''}</div>
