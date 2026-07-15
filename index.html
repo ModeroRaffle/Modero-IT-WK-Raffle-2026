@@ -750,29 +750,49 @@ function renderLive(){
     "Quarter-finals":"kwartfinale", "Semi-finals":"halve finale",
     "Third place":"troostfinale", "Final":"finale"
   };
+
+  const asDate = (value) => {
+    if(!value) return null;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  };
+  const koDate = (k) => asDate(k.utcDate || k.date || k.datetime || (k.matchNo ? KO_CAL[k.matchNo] : null));
+  const teamName = (name) => (name && String(name).trim()) ? String(name).trim() : "n.t.b.";
+  const teamFlag = (name) => (name && String(name).trim()) ? flagImg(String(name).trim()) : "";
+
   // bouw een uniforme lijst: groepswedstrijden + knockout-wedstrijden
   const groupItems = WC_MATCHES.map(m=>({
     home:m.home, away:m.away, hs:m.hs, as_:m.as_, phs:null, pas:null,
     when: matchDateTime(m), label:"Groep "+m.group,
     dstr: fmtDate(m), tstr: fmtTime(m)
   }));
-  const koItems = (WC_KO||[]).filter(k=>k.home && k.away).map(k=>{
-    const utc = k.matchNo ? KO_CAL[k.matchNo] : null;
-    const when = utc ? new Date(utc) : null;
+
+  // Knockout-wedstrijden worden NIET meer weggefilterd wanneer één of beide
+  // ploegen nog onbekend zijn. Zo blijven de komende halve finale,
+  // troostfinale en finale zichtbaar met "n.t.b." als tijdelijke tegenstander.
+  const koItems = (WC_KO||[]).map(k=>{
+    const when = koDate(k);
     return {
-      home:k.home, away:k.away, hs:k.hs, as_:k.as_, phs:k.phs, pas:k.pas,
+      home:k.home || null, away:k.away || null, hs:k.hs, as_:k.as_, phs:k.phs, pas:k.pas,
       when, label: KO_LABEL[k.round] || k.round || "knockout",
       dstr: when ? fmtDateD(when) : "", tstr: when ? fmtTimeD(when) : ""
     };
-  });
+  }).filter(x=>x.when || x.home || x.away || (x.hs!=null && x.as_!=null));
+
   const all = groupItems.concat(koItems);
   const isPlayed = x => x.hs!=null && x.as_!=null;
 
-  // laatste 3 gespeelde (op datum aflopend); knockout heeft mogelijk geen 'when'
+  // laatste 3 gespeelde wedstrijden, inclusief knockout vanaf de 1/16 finales
   const done = all.filter(isPlayed)
     .sort((a,b)=>(b.when?b.when:0)-(a.when?a.when:0)).slice(0,3);
-  // aankomende 3 (niet gespeeld, met bekende datum, op datum oplopend)
-  const next = all.filter(x=>!isPlayed(x) && x.when)
+
+  // volgende 3 wedstrijden. We negeren ongespeelde wedstrijden die duidelijk in
+  // het verleden liggen, zodat oude feed-gaten niet vóór de echte volgende matchen komen.
+  const now = new Date();
+  const grace = 2*60*60*1000;
+  const nextPool = all.filter(x=>!isPlayed(x) && x.when);
+  const futurePool = nextPool.filter(x=>x.when.getTime() >= now.getTime()-grace);
+  const next = (futurePool.length ? futurePool : nextPool)
     .sort((a,b)=>a.when-b.when).slice(0,3);
 
   // strafschoppenregel onder de score (alleen bij een shootout)
@@ -781,21 +801,27 @@ function renderLive(){
 
   const lastBox=document.getElementById('lastMatches');
   if(!done.length){ lastBox.innerHTML='<div class="live-empty">Nog geen gespeelde wedstrijden.</div>'; }
-  else lastBox.innerHTML=done.map(x=>`
+  else lastBox.innerHTML=done.map(x=>{
+    const home=teamName(x.home), away=teamName(x.away);
+    return `
     <div class="match">
-      <div class="side"> ${flagImg(x.home)}<span class="nm">${esc(x.home)}</span></div>
+      <div class="side"> ${teamFlag(x.home)}<span class="nm">${esc(home)}</span></div>
       <div class="mid"><div class="score">${x.hs}-${x.as_}</div>${penLine(x)}<div class="grp">${esc(x.label)}</div></div>
-      <div class="side away"><span class="nm">${esc(x.away)}</span>${flagImg(x.away)}</div>
-    </div>`).join('');
+      <div class="side away"><span class="nm">${esc(away)}</span>${teamFlag(x.away)}</div>
+    </div>`;
+  }).join('');
 
   const nextBox=document.getElementById('nextMatches');
   if(!next.length){ nextBox.innerHTML='<div class="live-empty">Geen geplande wedstrijden.</div>'; }
-  else nextBox.innerHTML=next.map(x=>`
+  else nextBox.innerHTML=next.map(x=>{
+    const home=teamName(x.home), away=teamName(x.away);
+    return `
     <div class="match">
-      <div class="side">${flagImg(x.home)}<span class="nm">${esc(x.home)}</span></div>
+      <div class="side">${teamFlag(x.home)}<span class="nm">${esc(home)}</span></div>
       <div class="mid"><div class="kickoff"><span class="d">${x.dstr}</span>${x.tstr}</div><div class="grp">${esc(x.label)}</div></div>
-      <div class="side away"><span class="nm">${esc(x.away)}</span>${flagImg(x.away)}</div>
-    </div>`).join('');
+      <div class="side away"><span class="nm">${esc(away)}</span>${teamFlag(x.away)}</div>
+    </div>`;
+  }).join('');
 }
 // datum/tijd-helpers die direct op een Date werken (voor knockout met KO_CAL)
 function fmtDateD(d){
@@ -1968,8 +1994,10 @@ function normalizeFootballDataMatch(fm) {
       (ft && typeof ft[1] === "number") ? ft[1] : null;
   }
 
+  const utcDate = fm.utcDate || fm.date || fm.matchDate || fm.kickoff || fm.kickoff_at || fm.startTime || fm.start_time || fm.datetime || fm.utc_date;
+
   return {
-    utcDate: fm.utcDate,
+    utcDate,
     status: fm.status,
     stage: fm.stage,
     group: fm.group,
@@ -2075,9 +2103,15 @@ function loadCache(){
 // Telt hoeveel groepswedstrijden in de feed daadwerkelijk een uitslag hebben.
 // Gebruikt om een "goede" (verse) feed te onderscheiden van een lege/verouderde.
 function feedHasScores(json){
-  const list = Array.isArray(json) ? json : (json && json.matches) ? json.matches : [];
+  const list = Array.isArray(json) ? json
+    : (json && Array.isArray(json.matches)) ? json.matches
+    : (json && json.data && Array.isArray(json.data.matches)) ? json.data.matches
+    : (json && json.response && Array.isArray(json.response.matches)) ? json.response.matches
+    : [];
   return list.some(m=>{
-    const ft = m && m.score && m.score.fullTime;
+    const score = (m && m.score) || {};
+    const ft = score.fullTime || score.ft || score.result || null;
+    if(Array.isArray(ft)) return ft[0]!=null && ft[1]!=null;
     return ft && ft.home!=null && ft.away!=null;
   });
 }
@@ -2183,6 +2217,9 @@ function applyLiveData(json) {
       as_: fm.as_,
       phs: fm.phs,             // strafschoppen thuis (null als geen shootout)
       pas: fm.pas,             // strafschoppen uit
+      utcDate: fm.utcDate || raw.utcDate || raw.date || null,
+      status: fm.status || raw.status || null,
+      id: raw.id || null,
     });
   });
 
@@ -2208,7 +2245,12 @@ async function loadLiveData(){
     const res = await fetch(LIVE_URL, {cache:"no-store"});
     if(res.ok){
       const json = await res.json();
-      if(json && Array.isArray(json.matches) && json.matches.length){
+      const liveList = Array.isArray(json) ? json
+        : (json && Array.isArray(json.matches)) ? json.matches
+        : (json && json.data && Array.isArray(json.data.matches)) ? json.data.matches
+        : (json && json.response && Array.isArray(json.response.matches)) ? json.response.matches
+        : null;
+      if(liveList && liveList.length){
         if(feedHasScores(json)){
           // verse feed met echte uitslagen -> toepassen en bewaren
           applyLiveData(json);
